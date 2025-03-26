@@ -27,7 +27,7 @@ centercrop_dict = {
     'PERM':64
 }
 
-def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, normalize=True):
+def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, normalize=True, is_multimodal=False):
     """Return a dataloader with given dataset and augmentation, normalize data?."""
     path = os.path.expanduser(data_path)
 
@@ -35,7 +35,7 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
         trainset, validset = _build_cifar10(path, defs.augmentations, normalize)
         loss_fn = Classification()
     if dataset == 'MM_IMDB':
-        trainset, validset = _build_multimodal_imdb(path, defs.augmentations, normalize,is_multimodal=config['is_multimodal'])
+        trainset, validset = _build_multimodal_imdb(path, defs.augmentations, normalize,is_multimodal=is_multimodal)
         loss_fn = Classification()
     elif dataset == 'CIFAR100':
         trainset, validset = _build_cifar100(path, defs.augmentations, normalize)
