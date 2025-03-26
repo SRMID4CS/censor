@@ -348,15 +348,15 @@ def _build_multimodal_imdb(data_path, augmentations=True, normalize=True, is_mul
     """Load Multimodal IMDB dataset in CENSOR format."""
     # Load data
     with h5py.File(data_path, 'r') as f:
-        images = f['resized_images'][:num_samples]  # (num_samples, 1, 128, 80)
-        final_tensors = f['final_tensors'][:num_samples]  # (num_samples, 128, 115)
-        labels = f['labels'][:num_samples]  # (num_samples,)
+        images = f['resized_images'][:]  # (num_samples, 1, 128, 80)
+        final_tensors = f['final_tensors'][:]  # (num_samples, 128, 115)
+        labels = f['labels'][:]  # (num_samples,)
 
     num_samples = len(labels)  # Inferred from the size of the labels
 
     full_set = []
     for i in range(num_samples):
-        if config['is_multimodal']:
+        if is_multimodal:
             image = torch.tensor(final_tensors[i], dtype=torch.float32)
         else:
             image = torch.tensor(images[i], dtype=torch.float32)

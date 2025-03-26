@@ -58,7 +58,8 @@ def init_logger(output_dir, log_level=logging.INFO):
 
 nclass_dict = {'I32': 1000, 'I64': 1000, 'I128': 1000, 
                'CIFAR10': 10, 'CIFAR100': 100, 'CA': 8, 'ImageNet':1000, 'IMAGENET_IO' : 1000,
-               'FFHQ': 10, 'FFHQ64': 10, 'FFHQ128': 10, 'OOD_FFHQ':10, 'OOD_IMAGENET':1000
+               'FFHQ': 10, 'FFHQ64': 10, 'FFHQ128': 10, 'OOD_FFHQ':10, 'OOD_IMAGENET':1000,
+               'MM_IMDB':23
                }
 # Parse input arguments
 
@@ -270,7 +271,8 @@ if __name__ == "__main__":
 
             if config['num_images'] == 1:
                 ground_truth, labels = validloader.dataset[target_id]
-                ground_truth, labels = ground_truth.unsqueeze(0).to(**setup), torch.as_tensor((labels,), device=setup['device'])
+                ground_truth, labels = ground_truth.unsqueeze(0).unsqueeze(1).to(**setup), torch.as_tensor(labels, device=setup['device'])
+                # ground_truth, labels = ground_truth.unsqueeze(0).to(**setup), torch.as_tensor((labels,), device=setup['device'])
                 target_id_ = target_id + 1
                 logger.info(f"loaded img {target_id_ - 1}")
                 tid_list.append(target_id_ - 1)

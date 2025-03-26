@@ -40,3 +40,5 @@ mm_imdb_image_std = (0.30810782313346863,)
 mm_imdb_final_tensor_mean = (0.13066373765468597,)
 mm_imdb_final_tensor_std = (0.30810782313346863,)
  
+mm_imdb_mean = (0.13066373765468597,)
+mm_imdb_std = (0.30810782313346863,)
