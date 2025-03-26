@@ -7,3 +7,5 @@ models/*
 
 inversefed/genmodels/stylegan2_io/stylegan2-ffhq-config-f.pt
 shape_predictor_68_face_landmarks.dat
+
+.spyproject

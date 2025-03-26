@@ -254,6 +254,13 @@ if __name__ == "__main__":
             ssim = {}
             mse_i = {}
 
+            # indicator dictionary for image in multimodal tensor (eg : mm_imdb)
+            mm_psnrs = {}
+            mm_lpips_sc ={}
+            mm_lpips_sc_a = {}
+            mm_ssim = {}
+            mm_mse_i = {}
+
             target_id = config['target_id'] + i * 1000
 
             tid_list = []
@@ -416,6 +423,37 @@ if __name__ == "__main__":
                     logger.info("output_den's dimension:{}".format(output_den.shape))
                     test_psnr = inversefed.metrics.psnr(output_den, ground_truth_den, factor=1)
                     logger.info(f"Rec. loss: {stats['opt']:2.4f} | MSE: {test_mse:2.4f} | LPIPS(VGG): {lpips_score:2.4f} | LPIPS(ALEX): {lpips_score_a:2.4f} | SSIM: {ssim_score:2.4f} | PSNR: {test_psnr:4.2f} | FMSE: {feat_mse:2.4e} | ")
+                    
+                    # metrics for image sub part in tensor
+                    if config['is_multimodal']:
+                        image_tensor_dim_h = config['image_tensor_dim_h']
+                        image_tensor_dim_w = config['image_tensor_dim_w']
+                        #seperate the image part
+                        ground_truth_image = ground_truth[:, :image_tensor_dim_h, :image_tensor_dim_w]
+                        output_image = output_image[:, :image_tensor_dim_h, :image_tensor_dim_w]
+                        if ground_truth_image.shape != output_image.shape:
+                            logger.warning(f"Shape mismatch: ground_truth_image {ground_truth_image.shape}, output_image {output_image.shape}")
+
+                        # den
+                        output_den_image = torch.clamp(output_image * ds + dm, 0, 1)
+                        ground_truth_den_image = torch.clamp(ground_truth_image * ds + dm, 0, 1)
+                        
+                        # calc for image only mm_(metric)s
+                        mm_test_psnr = inversefed.metrics.psnr(output_den_image, ground_truth_den_image, factor=1)
+                        with torch.no_grad():
+                            mm_lpips_score = lpips_loss(output_image, ground_truth_image).squeeze().mean().item()
+                            mm_lpips_score_a = lpips_loss_a(output_image, ground_truth_image).squeeze().mean().item()
+                        mm_ssim_score, __ = inversefed.metrics.ssim_batch(output_image, ground_truth_image)
+                        feat_mse = (model(output) - model(ground_truth)).pow(2).mean().item()
+                        test_mse = (output_den - ground_truth_den).pow(2).mean().item()
+                        logger.info(f"Rec. loss: {stats['opt']:2.4f} | MSE: {test_mse:2.4f} | LPIPS(VGG): {lpips_score:2.4f} | LPIPS(ALEX): {lpips_score_a:2.4f} | SSIM: {ssim_score:2.4f} | PSNR: {test_psnr:4.2f} | FMSE: {feat_mse:2.4e} |  [IMAGE of Multimodal]")
+                        
+                        #add results to with mm but image only dicts
+                        mm_psnrs[file_name +'mm_psnr'] = mm_test_psnr
+                        mm_lpips_sc[file_name +'mm_lpips(vgg)'] = mm_lpips_score
+                        mm_lpips_sc_a[file_name +'mm_lpips(alex)'] = mm_lpips_score_a
+                        mm_ssim[file_name +'mm_ssim'] = mm_ssim_score
+                        mm_mse_i[file_name + 'mm_mse_i'] = mm_test_mse
 
                 ouput_dir = os.path.join(save_dir, file_name)
                 
@@ -425,21 +463,44 @@ if __name__ == "__main__":
                 ssim[file_name +'_ssim'] = ssim_score
                 mse_i[file_name + '_mse_i'] = test_mse
 
+
+
                 os.makedirs(os.path.join(ouput_dir), exist_ok=True)
 
                 exp_name = config['exp_name']
-                inversefed.utils.save_to_table(os.path.join(ouput_dir), name=f'{exp_name}', dryrun=args.dryrun,
-                                            rec_loss=stats["opt"],
-                                            psnr=test_psnr,
-                                            LPIPS_VGG=lpips_score,
-                                            LPIPS_ALEX=lpips_score_a,
-                                            ssim=ssim_score,
-                                            test_mse=test_mse,
-                                            feat_mse=feat_mse,
+                if config['is_multimodal'] :
+                    inversefed.utils.save_to_table(os.path.join(ouput_dir), name=f'{exp_name}', dryrun=args.dryrun,
+                                                rec_loss=stats["opt"],
+                                                psnr=test_psnr,
+                                                LPIPS_VGG=lpips_score,
+                                                LPIPS_ALEX=lpips_score_a,
+                                                ssim=ssim_score,
+                                                test_mse=test_mse,
+                                                feat_mse=feat_mse,
+                                                
+                                                mm_psnr=mm_test_psnr,
+                                                mm_LPIPS_VGG=mm_lpips_score,
+                                                mm_LPIPS_ALEX=mm_lpips_score_a,
+                                                mm_ssim=mm_ssim_score,
+                                                mm_test_mse=mm_test_mse,
+                                                mm_feat_mse=mm_feat_mse,
 
-                                            target_id=target_id,
-                                            seed=model_seed
-                                            )
+                                                target_id=target_id,
+                                                seed=model_seed
+                                                )
+                else :
+                    inversefed.utils.save_to_table(os.path.join(ouput_dir), name=f'{exp_name}', dryrun=args.dryrun,
+                                                rec_loss=stats["opt"],
+                                                psnr=test_psnr,
+                                                LPIPS_VGG=lpips_score,
+                                                LPIPS_ALEX=lpips_score_a,
+                                                ssim=ssim_score,
+                                                test_mse=test_mse,
+                                                feat_mse=feat_mse,
+                                                
+                                                target_id=target_id,
+                                                seed=model_seed
+                                                )
 
 
                 # Save the resulting image
@@ -450,9 +511,9 @@ if __name__ == "__main__":
                 target_id = target_id_
                 
             if Best_layer_num >= 0:                    
-                inversefed.utils.save_to_table(os.path.join(save_dir), name='Metrics', dryrun=args.dryrun, target_id=int(target_id - 1), Best_layer_num=Best_layer_num ,**psnrs, **lpips_sc, **lpips_sc_a, **ssim, **mse_i)
+                inversefed.utils.save_to_table(os.path.join(save_dir), name='Metrics', dryrun=args.dryrun, target_id=int(target_id - 1), Best_layer_num=Best_layer_num ,**psnrs, **lpips_sc, **lpips_sc_a, **ssim, **mse_i, **mm_psnrs, **mm_lpips_sc, **mm_lpips_sc_a, **mm_ssim, **mm_mse_i)
             else:
-                inversefed.utils.save_to_table(os.path.join(save_dir), name='Metrics', dryrun=args.dryrun, target_id=int(target_id - 1), **psnrs, **lpips_sc, **lpips_sc_a, **ssim, **mse_i)
+                inversefed.utils.save_to_table(os.path.join(save_dir), name='Metrics', dryrun=args.dryrun, target_id=int(target_id - 1), **psnrs, **lpips_sc, **lpips_sc_a, **ssim, **mse_i, **mm_psnrs, **mm_lpips_sc, **mm_lpips_sc_a, **mm_ssim, **mm_mse_i)
                 
 
             for j in range(config['num_images']):

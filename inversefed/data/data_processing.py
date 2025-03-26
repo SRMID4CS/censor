@@ -1,6 +1,6 @@
 """Repeatable code parts concerning data loading."""
 
-
+import h5py
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -33,6 +33,9 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
 
     if dataset == 'CIFAR10':
         trainset, validset = _build_cifar10(path, defs.augmentations, normalize)
+        loss_fn = Classification()
+    if dataset == 'MM_IMDB':
+        trainset, validset = _build_multimodal_imdb(path, defs.augmentations, normalize,is_multimodal=config['is_multimodal'])
         loss_fn = Classification()
     elif dataset == 'CIFAR100':
         trainset, validset = _build_cifar100(path, defs.augmentations, normalize)
@@ -341,6 +344,53 @@ def _build_permuted_Imagenet(data_path, augmentations=True, normalize=True):
 
     return trainset, validset
 
+def _build_multimodal_imdb(data_path, augmentations=True, normalize=True, is_multimodal=False):
+    """Load Multimodal IMDB dataset in CENSOR format."""
+    # Load data
+    with h5py.File(data_path, 'r') as f:
+        images = f['resized_images'][:num_samples]  # (num_samples, 1, 128, 80)
+        final_tensors = f['final_tensors'][:num_samples]  # (num_samples, 128, 115)
+        labels = f['labels'][:num_samples]  # (num_samples,)
+
+    num_samples = len(labels)  # Inferred from the size of the labels
+
+    full_set = []
+    for i in range(num_samples):
+        if config['is_multimodal']:
+            image = torch.tensor(final_tensors[i], dtype=torch.float32)
+        else:
+            image = torch.tensor(images[i], dtype=torch.float32)
+        label = torch.tensor(labels[i], dtype=torch.long)
+        full_set.append((label, image))
+
+    # Calculate global mean and std for image and final tensor
+    all_images = torch.cat([full_set[i][1].reshape(-1) for i in range(len(full_set))], dim=0)
+    image_mean = torch.mean(all_images).item()
+    image_std = torch.std(all_images).item()
+
+    # Normalization if needed
+    def normalize_tensor(tensor, mean, std):
+        return (tensor - mean) / std
+
+    if normalize:
+        transform = lambda x: normalize_tensor(x, image_mean, image_std)
+    else:
+        transform = lambda x: x
+
+    # Creating trainset and validset (using the same full set for simplicity)
+    trainset = full_set
+    validset = full_set
+
+    # Apply transform
+    for i in range(len(trainset)):
+        label, image = trainset[i]
+        trainset[i] = (label, transform(image))
+
+    for i in range(len(validset)):
+        label, image = validset[i]
+        validset[i] = (label, transform(image))
+
+    return trainset, validset
 
 def _get_meanstd(dataset):
     cc = torch.cat([trainset[i][0].reshape(3, -1) for i in range(len(trainset))], dim=1)
