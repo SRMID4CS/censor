@@ -286,7 +286,7 @@ if __name__ == "__main__":
                     target_id_ += 1
                     if (label not in labels):         
                         logger.info("loaded img %d" % (target_id_ - 1))
-                        labels.append(torch.as_tensor((label,), device=setup['device']))
+                        labels.append(torch.as_tensor(label, device=setup['device']))
                         ground_truth.append(img.to(**setup))
                         tid_list.append(target_id_ - 1)
 
@@ -450,7 +450,7 @@ if __name__ == "__main__":
                         image_tensor_dim_w = config['image_tensor_dim_w']
                         #seperate the image part
                         ground_truth_image = ground_truth[:, :image_tensor_dim_h, :image_tensor_dim_w]
-                        output_image = output_image[:, :image_tensor_dim_h, :image_tensor_dim_w]
+                        output_image = output[:, :image_tensor_dim_h, :image_tensor_dim_w]
                         if ground_truth_image.shape != output_image.shape:
                             logger.warning(f"Shape mismatch: ground_truth_image {ground_truth_image.shape}, output_image {output_image.shape}")
 
@@ -464,8 +464,8 @@ if __name__ == "__main__":
                             mm_lpips_score = lpips_loss(output_image, ground_truth_image).squeeze().mean().item()
                             mm_lpips_score_a = lpips_loss_a(output_image, ground_truth_image).squeeze().mean().item()
                         mm_ssim_score, __ = inversefed.metrics.ssim_batch(output_image, ground_truth_image)
-                        feat_mse = (model(output) - model(ground_truth)).pow(2).mean().item()
-                        test_mse = (output_den - ground_truth_den).pow(2).mean().item()
+                        mm_feat_mse = (model(output_image) - model(ground_truth_image)).pow(2).mean().item()
+                        mm_test_mse = (output_den_image - ground_truth_den_image).pow(2).mean().item()
                         logger.info(f"Rec. loss: {stats['opt']:2.4f} | MSE: {test_mse:2.4f} | LPIPS(VGG): {lpips_score:2.4f} | LPIPS(ALEX): {lpips_score_a:2.4f} | SSIM: {ssim_score:2.4f} | PSNR: {test_psnr:4.2f} | FMSE: {feat_mse:2.4e} |  [IMAGE of Multimodal]")
                         
                         #add results to with mm but image only dicts
