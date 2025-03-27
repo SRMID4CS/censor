@@ -436,8 +436,8 @@ if __name__ == "__main__":
                         image_tensor_dim_h = config['image_tensor_dim_h']
                         image_tensor_dim_w = config['image_tensor_dim_w']
                         #seperate the image part
-                        ground_truth_image = ground_truth[:, :image_tensor_dim_h, :image_tensor_dim_w]
-                        output_image = output[:, :image_tensor_dim_h, :image_tensor_dim_w]
+                        ground_truth_image = ground_truth[:, :, :image_tensor_dim_h, :image_tensor_dim_w]
+                        output_image = output[:, :, :image_tensor_dim_h, :image_tensor_dim_w]
                         if ground_truth_image.shape != output_image.shape:
                             logger.warning(f"Shape mismatch: ground_truth_image {ground_truth_image.shape}, output_image {output_image.shape}")
 
