@@ -363,7 +363,7 @@ def _build_multimodal_imdb(data_path, augmentations=True, normalize=True, is_mul
         label = torch.tensor(labels[i], dtype=torch.long)
         full_set.append((image, label))
         # Check if tensors are correctly loaded
-        print(f"Sample {i}: label = {label}, image shape = {image.shape}")
+        # print(f"Sample {i}: label = {label}, image shape = {image.shape}")
 
     # Calculate global mean and std for image and final tensor
     all_images = torch.cat([torch.tensor(full_set[i][1], dtype=torch.float32).reshape(-1) for i in range(len(full_set))], dim=0)
