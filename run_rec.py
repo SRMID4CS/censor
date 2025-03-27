@@ -272,9 +272,7 @@ if __name__ == "__main__":
 
             if config['num_images'] == 1:
                 ground_truth, labels = validloader.dataset[target_id]
-                ground_truth, labels = ground_truth.unsqueeze(0).to(**setup), torch.as_tensor(labels, device=setup['device'])
-                ## MM_IMDB change
-                # ground_truth, labels = ground_truth.unsqueeze(0).to(**setup), torch.as_tensor((labels,), device=setup['device'])
+                ground_truth, labels = ground_truth.unsqueeze(0).to(**setup), torch.as_tensor((labels,), device=setup['device'])
                 target_id_ = target_id + 1
                 logger.info(f"loaded img {target_id_ - 1}")
                 tid_list.append(target_id_ - 1)
@@ -286,30 +284,19 @@ if __name__ == "__main__":
                     target_id_ += 1
                     if (label not in labels):         
                         logger.info("loaded img %d" % (target_id_ - 1))
-                        labels.append(torch.as_tensor(label, device=setup['device']))
+                        labels.append(torch.as_tensor((label,), device=setup['device']))
                         ground_truth.append(img.to(**setup))
                         tid_list.append(target_id_ - 1)
 
                 ground_truth = torch.stack(ground_truth)
                 labels = torch.cat(labels)
-                
-            # Assuming ground_truth is a tensor of shape (num_images, channels, height, width)
-            if len(ground_truth.shape) == 3:  # (num_images, height, width) for grayscale
-                ground_truth = ground_truth.unsqueeze(1)  # Add channel dimension -> (num_images, 1, height, width)
-            
+
+            img_shape = (3, ground_truth.shape[2], ground_truth.shape[3])
+
             # Debugging the shape of ground_truth
             print(f"ground_truth shape: {ground_truth.shape}")
             print(f"labels shape: {labels.shape}")
             
-            # Adjust the image shape for grayscale (1 channel) or RGB (3 channels)
-            if ground_truth.shape[1] == 1:  # Grayscale
-                img_shape = (3, ground_truth.shape[2], ground_truth.shape[3])
-                ground_truth = ground_truth.repeat(1, 3, 1, 1)
-            elif ground_truth.shape[1] == 3:  # RGB
-                img_shape = (3, ground_truth.shape[2], ground_truth.shape[3])
-            else:
-                raise ValueError("Unsupported number of channels in image data")
-
             # Run reconstruction
             if config['bn_stat'] > 0:
                 bn_layers = []
