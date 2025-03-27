@@ -361,13 +361,15 @@ def _build_multimodal_imdb(data_path, augmentations=True, normalize=True, is_mul
         else:
             image = torch.tensor(images[i], dtype=torch.float32)
         label = torch.tensor(labels[i], dtype=torch.long)
-        full_set.append((label, image))
+        full_set.append((image, label))
 
     # Calculate global mean and std for image and final tensor
-    all_images = torch.cat([full_set[i][1].reshape(-1) for i in range(len(full_set))], dim=0)
+    all_images = torch.cat([torch.tensor(full_set[i][1], dtype=torch.float32).reshape(-1) for i in range(len(full_set))], dim=0)
     image_mean = torch.mean(all_images).item()
     image_std = torch.std(all_images).item()
 
+    print(f"mm_imdb mean: {image_mean}")
+    print(f"mm_imdb std: {image_std}")
     # Normalization if needed
     def normalize_tensor(tensor, mean, std):
         return (tensor - mean) / std
@@ -383,12 +385,12 @@ def _build_multimodal_imdb(data_path, augmentations=True, normalize=True, is_mul
 
     # Apply transform
     for i in range(len(trainset)):
-        label, image = trainset[i]
-        trainset[i] = (label, transform(image))
+        image, label = trainset[i]
+        trainset[i] = (transform(image), label)
 
     for i in range(len(validset)):
-        label, image = validset[i]
-        validset[i] = (label, transform(image))
+        image, label = validset[i]
+        validset[i] = (transform(image), label)
 
     return trainset, validset
 

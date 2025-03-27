@@ -262,7 +262,8 @@ if __name__ == "__main__":
             mm_ssim = {}
             mm_mse_i = {}
 
-            target_id = config['target_id'] + i * 1000
+            num_samples = len(validloader.dataset)
+            target_id = (config['target_id'] + i * 1001) % num_samples
 
             tid_list = []
 
@@ -271,7 +272,7 @@ if __name__ == "__main__":
 
             if config['num_images'] == 1:
                 ground_truth, labels = validloader.dataset[target_id]
-                ground_truth, labels = ground_truth.unsqueeze(0).unsqueeze(1).to(**setup), torch.as_tensor(labels, device=setup['device'])
+                ground_truth, labels = ground_truth.unsqueeze(0).to(**setup), torch.as_tensor(labels, device=setup['device'])
                 ## MM_IMDB change
                 # ground_truth, labels = ground_truth.unsqueeze(0).to(**setup), torch.as_tensor((labels,), device=setup['device'])
                 target_id_ = target_id + 1
@@ -298,15 +299,16 @@ if __name__ == "__main__":
             
             # Debugging the shape of ground_truth
             print(f"ground_truth shape: {ground_truth.shape}")
+            print(f"labels shape: {labels.shape}")
             
             # Adjust the image shape for grayscale (1 channel) or RGB (3 channels)
             if ground_truth.shape[1] == 1:  # Grayscale
-                img_shape = (1, ground_truth.shape[2], ground_truth.shape[3])
+                img_shape = (3, ground_truth.shape[2], ground_truth.shape[3])
+                ground_truth = ground_truth.repeat(1, 3, 1, 1)
             elif ground_truth.shape[1] == 3:  # RGB
                 img_shape = (3, ground_truth.shape[2], ground_truth.shape[3])
             else:
                 raise ValueError("Unsupported number of channels in image data")
-            img_shape = (3, ground_truth.shape[2], ground_truth.shape[3])
 
             # Run reconstruction
             if config['bn_stat'] > 0:

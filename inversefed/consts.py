@@ -33,12 +33,12 @@ ood_imagenet_mean = [0.485, 0.456, 0.406]
 ood_imagenet_std = [0.229, 0.224, 0.225]
 
 # add correct values
-mm_imdb_image_mean = (0.13066373765468597,)
-mm_imdb_image_std = (0.30810782313346863,)
+mm_imdb_image_mean = (-7.034665584564209,)
+mm_imdb_image_std = (76.10275268554688)
 
 # add correct values
-mm_imdb_final_tensor_mean = (0.13066373765468597,)
-mm_imdb_final_tensor_std = (0.30810782313346863,)
+mm_imdb_final_tensor_mean = (-7.034665584564209,)
+mm_imdb_final_tensor_std = (76.10275268554688,)
  
-mm_imdb_mean = (0.13066373765468597,)
-mm_imdb_std = (0.30810782313346863,)
+mm_imdb_mean = (-7.034665584564209,)
+mm_imdb_std = (76.10275268554688,)

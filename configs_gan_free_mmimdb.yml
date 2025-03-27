@@ -27,7 +27,7 @@
   generative_model : ''
   gen_dataset : 'ImageNet64'    # ['ImageNet64', 'FFHQ64']
   dataset : 'MM_IMDB'       
-  data_path : '/home/ubuntu/mnt-disk/data/mmimdb_custom/multimodal_dataset_128_115_10000_25.hdf5'  # specify your dataset path
+  data_path : '/home/ubuntu/mnt-disk/data/mmimdb_custom/multimodal_dataset_128_115_100_25.hdf5'  # specify your dataset path
 
   #For output data
   exp_name : 'ex4_gan_free_mm_imdb'   #Same latent space search
@@ -60,3 +60,4 @@
   # location of img in MM tensor
   image_tensor_dim_h : 128
   image_tensor_dim_w : 80
+  
