@@ -164,11 +164,48 @@ def construct_model(model, num_classes=10, seed=None, num_channels=3, modelkey=N
                             in_shape=in_shape, mult=4)
     elif model == 'LeNetZhu':
         model = LeNetZhu(num_channels=num_channels, num_classes=num_classes)
+    elif model == 'MultimodalMultiLabelClassifier':
+        model = MultimodalMultiLabelClassifier(n_classes=num_classes)
     else:
         raise NotImplementedError('Model not implemented.')
 
     print(f'Model initialized with random key {model_init_seed}.')
     return model, model_init_seed
+
+from transformers import BertModel
+
+class MultimodalMultiLabelClassifier(nn.Module):
+    def __init__(self, n_classes=23):
+        super().__init__()
+        # Image encoder (ResNet18)
+        self.image_encoder = torchvision.models.resnet18(pretrained=True)
+        self.image_encoder.fc = nn.Linear(self.image_encoder.fc.in_features, 512)
+
+        # Text encoder (BERT base)
+        self.text_encoder = BertModel.from_pretrained("bert-base-uncased")
+        self.text_proj = nn.Linear(self.text_encoder.config.hidden_size, 512)
+
+        # Classifier
+        self.classifier = nn.Sequential(
+            nn.Linear(512 + 512, 512),
+            nn.ReLU(),
+            nn.Linear(512, n_classes)
+        )
+
+    def forward(self, image, input_ids, attention_mask):
+        img_feat = self.image_encoder(image)  # [B, 512]
+        text_feat = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask).pooler_output
+        # text_feat = self.text_encoder(input_ids=input_ids).pooler_output
+        text_feat = self.text_proj(text_feat)  # [B, 512]
+
+        fused = torch.cat((img_feat, text_feat), dim=1)  # [B, 1024]
+        logits = self.classifier(fused)  # [B, n_classes]
+
+        # return logits
+
+        # Apply sigmoid to get probabilities for multi-label classification
+        probs = torch.sigmoid(logits)  # This will output probabilities for each class
+        return probs
 
 
 class ResNet(torchvision.models.ResNet):

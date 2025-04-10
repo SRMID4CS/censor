@@ -112,3 +112,38 @@ class Classification(Loss):
         else:
             value = (x.data.argmax(dim=1) == y).sum().float() / y.shape[0]
             return value.detach(), name, format
+
+class MultiLabelClassification(Loss):
+    """BCEWithLogitsLoss for multilabel classification
+    
+    The minimized criterion is BCEWithLogitsLoss, the actual metric is average binary accuracy per label.
+    """
+
+    def __init__(self):
+        """Init with torch BCEWithLogitsLoss."""
+        self.loss_fn = torch.nn.BCEWithLogitsLoss(reduction='mean')
+    
+    def __call__(self, x=None, y=None):
+        """Return l(x, y)."""
+        name = 'BCEWithLogits'
+        format = '1.5f'
+        if x is None:
+            return name, format
+        else:
+            # Ensure y is float for BCEWithLogitsLoss
+            y = y.float()
+            value = self.loss_fn(x, y)
+            return value, name, format
+
+    def metric(self, x=None, y=None):
+        """Calculate average binary accuracy for multi-label output."""
+        name = 'Mean Binary Accuracy'
+        format = '6.2%'
+        if x is None:
+            return name, format
+        else:
+            # Sigmoid + threshold at 0.2
+            preds = torch.sigmoid(x) > 0.2 #acc. threshold hyper param for multi label
+            correct = (preds == y.bool()).float()
+            accuracy = correct.mean()  # Mean across all elements
+            return accuracy.detach(), name, format

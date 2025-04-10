@@ -32,6 +32,8 @@ import lpips
 import datetime
 import logging
 
+from multimodal import train_and_validate
+
 def init_logger(output_dir, log_level=logging.INFO):
     """Initialize and configure the root logger."""
     # Configure the root logger
@@ -58,7 +60,8 @@ def init_logger(output_dir, log_level=logging.INFO):
 
 nclass_dict = {'I32': 1000, 'I64': 1000, 'I128': 1000, 
                'CIFAR10': 10, 'CIFAR100': 100, 'CA': 8, 'ImageNet':1000, 'IMAGENET_IO' : 1000,
-               'FFHQ': 10, 'FFHQ64': 10, 'FFHQ128': 10, 'OOD_FFHQ':10, 'OOD_IMAGENET':1000
+               'FFHQ': 10, 'FFHQ64': 10, 'FFHQ128': 10, 'OOD_FFHQ':10, 'OOD_IMAGENET':1000,
+               'MMIMDB':23
                }
 # Parse input arguments
 
@@ -77,7 +80,8 @@ if args.target_id is None:
 args.save_image = True
 
 # Parse training strategy
-defs = inversefed.training_strategy('conservative')
+# default conservative
+defs = inversefed.training_strategy('adam')
 defs.epochs = args.epochs
 
 
@@ -470,26 +474,29 @@ if __name__ == "__main__":
         logger.info('Best noise gradient L2 norm: {}'.format(noisy_input_gradient_norm))
         inversefed.utils.save_to_table(os.path.join(save_dir), name=f'{epoch}_epoch_noise_gradient_norm', dryrun=args.dryrun, noisy_input_gradient_norm=str(noisy_input_gradient_norm.item()), best_noise_loss=best_noise_loss.item(), target_id=target_id, seed=model_seed)
 
-        # simulate FL training, train the model with more instances, then evaluate the model
-        model.train()
-        for i, (inputs, targets) in enumerate(trainloader):
-            logger.info(f"Epoch {epoch} batch {i} started")
-            optimizer.zero_grad()
-            inputs = inputs.to(**setup)
-            targets = targets.to(**setup)
-            targets = targets.long()
-            outputs = model(inputs)
-            loss, _, _ = loss_fn(outputs, targets)
-            loss.backward()
-            optimizer.step()
-            logger.info(f"loss: {loss.item()} at epoch {epoch} batch {i}")
-        
-        logger.info(f"Epoch {epoch} training loss: {loss.item()}")
-
-        # save the model checkpoint at each epoch
-        save_path = os.path.join(save_dir, f"model_epoch_{epoch}.pt")
-        torch.save(model.state_dict(), save_path)
-        logger.info(f"Model {epoch} epoch checkpoint saved at {save_path}")
+        if config['is_multimodal']:
+            train_and_validate(model, trainloader, validloader, criterion, optimizer, device, num_epochs=2)
+        else:
+            # simulate FL training, train the model with more instances, then evaluate the model
+            model.train()
+            for i, (inputs, targets) in enumerate(trainloader):
+                logger.info(f"Epoch {epoch} batch {i} started")
+                optimizer.zero_grad()
+                inputs = inputs.to(**setup)
+                targets = targets.to(**setup)
+                targets = targets.long()
+                outputs = model(inputs)
+                loss, _, _ = loss_fn(outputs, targets)
+                loss.backward()
+                optimizer.step()
+                logger.info(f"loss: {loss.item()} at epoch {epoch} batch {i}")
+            
+            logger.info(f"Epoch {epoch} training loss: {loss.item()}")
+    
+            # save the model checkpoint at each epoch
+            save_path = os.path.join(save_dir, f"model_epoch_{epoch}.pt")
+            torch.save(model.state_dict(), save_path)
+            logger.info(f"Model {epoch} epoch checkpoint saved at {save_path}")
 
     # Print final timestamp
     logger.info(datetime.datetime.now().strftime("%A, %d %B %Y %I:%M%p"))
