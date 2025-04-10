@@ -10,8 +10,8 @@
   restarts : 4
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 10     # the number of experiments
-  target_id : 9000
+  num_exp : 5     # the number of experiments
+  target_id : 100
   lr : 0.1            #learning rate for Yin et al.
   total_variation : 0.0001     #the coefficient of total variation 
   image_norm : 0.000001    #the coefficient of norm regularizer for Yin et al.
@@ -19,26 +19,26 @@
   
   bn_stat : 0       #choose if we use bn statistic to regularizer 
 
-  max_iterations : 15000    #Maximum number of iterations for reconstruction.
+  max_iterations : 200    #Maximum number of iterations for reconstruction.
 
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
 
   # For input data
   generative_model : ''
   gen_dataset : 'ImageNet64'    # ['ImageNet64', 'FFHQ64']
-  dataset : 'IMAGENET_IO'       
-  data_path : '/depot/ninghui/data/imagenet/val'  # specify your dataset path
+  dataset : 'CIFAR10'
+  data_path : '/home/ubuntu/mnt-disk/data/cifar10/'  # specify your dataset path
 
   #For output data
   exp_name : 'ex1_gan_free_imagenet'   #Same latent space search
-  output_dir : '/scratch/gilbreth/zhan4057/gradinv/results_gan_free/'
+  output_dir : '/home/ubuntu/mnt-disk/results/gan_free'
 
   #Choice for GAN-free methods
   geiping : true
   yin : false
 
-  train_epochs: 12
-  our_num_tries : 20
+  train_epochs: 5
+  our_num_tries : 4
   #Defense parameter
   defense_method : 'noise'
   defense_setting : 
@@ -54,3 +54,10 @@
 
   #LR pace for training
   lr_same_pace: false 
+  
+  # Multimodal
+  is_multimodal : false
+  # location of img in MM tensor
+  image_tensor_dim_h : 128
+  image_tensor_dim_w : 80
+

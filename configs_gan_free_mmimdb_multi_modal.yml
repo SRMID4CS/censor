@@ -56,7 +56,7 @@
   lr_same_pace: false 
   
   # Multimodal
-  is_multimodal : false
+  is_multimodal : true
   # location of img in MM tensor
   image_tensor_dim_h : 128
   image_tensor_dim_w : 80
