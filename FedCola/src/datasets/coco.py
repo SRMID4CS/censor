@@ -181,7 +181,7 @@ class CocoCaptionsCap(Dataset):
         else:
             raise ValueError(f'Unknown modality {self.modality}')
         
-        return x_input, target, image_id, annotation_id, index
+        return x_input, target #, image_id, annotation_id, index
 
     def __len__(self):
         return len(self.ids)
