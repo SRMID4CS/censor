@@ -56,7 +56,7 @@ def options():
     parser.add_argument('--gen_dataset', default='I128', type=str, help='XXX')
     parser.add_argument('--giml', action='store_true', help='XXX')
     parser.add_argument('--gias', action='store_true', help='XXX')
-    parser.add_argument('--lr', default=1e-1, type=float, help='XXX')
+    # parser.add_argument('--lr', default=1e-1, type=float, help='XXX')
     parser.add_argument('--gias_lr', default=1e-2, type=float, help='XXX')
 
     # supplementary
