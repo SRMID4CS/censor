@@ -180,6 +180,9 @@ def construct_model(model, num_classes=10, seed=None, num_channels=3, modelkey=N
         raise NotImplementedError('Model not implemented.')
 
     print(f'Model initialized with random key {model_init_seed}.')
+    if type(model)==str:
+        print(f'Model {model} not implemented.')
+        raise NotImplementedError('Model not implemented.')
     return model, model_init_seed
 
 
