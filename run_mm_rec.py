@@ -306,11 +306,11 @@ if __name__ == "__main__":
                 logger.info("Ground truth's size RAW:{}".format(ground_truth.shape))
                 if 'FedCola' in config['model']:
                     if config['model'] == 'FedCola_IMG_TXT':
-                        outputs_for_rec = model([inputs, targets], feat_out=True)
+                        outputs_for_rec = model([ground_truth, labels], feat_out=True)
                     elif config['model'] == 'FedCola_IMG':
-                        outputs_for_rec = model([inputs,None])[0]
+                        outputs_for_rec = model([ground_truth,None])[0]
                     elif config['model'] == 'FedCola_TXT':
-                        outputs_for_rec = model([None, targets])[1]
+                        outputs_for_rec = model([None, labels])[1]
                 else:
                     outputs_for_rec = model(inputs)
                 # TODO Fix loss function for task
