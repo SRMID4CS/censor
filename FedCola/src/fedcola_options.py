@@ -2,6 +2,9 @@
 Add options for the FedCola
 """
 
+from FedCola.src.utils import Range
+
+
 def add_fedcola_args(parser):
 
     #####################
@@ -26,12 +29,12 @@ def add_fedcola_args(parser):
     # Dataset arguments #
     #####################
     ## dataset configuration arguments (For MFL, none of these are used, please use --datasets, etc.)
-    parser.add_argument('--dataset', help='''name of dataset to use for an experiment (NOTE: case sensitive)
-    - image classification datasets in `torchvision.datasets`,
-    - text classification datasets in `torchtext.datasets`,
-    - LEAF benchmarks [ FEMNIST | Sent140 | Shakespeare | CelebA | Reddit ],
-    - among [ TinyImageNet | CINIC10 | SpeechCommands | BeerReviewsA | BeerReviewsL | Heart | Adult | Cover | GLEAM ]
-    ''', type=str)
+    # parser.add_argument('--dataset', help='''name of dataset to use for an experiment (NOTE: case sensitive)
+    # - image classification datasets in `torchvision.datasets`,
+    # - text classification datasets in `torchtext.datasets`,
+    # - LEAF benchmarks [ FEMNIST | Sent140 | Shakespeare | CelebA | Reddit ],
+    # - among [ TinyImageNet | CINIC10 | SpeechCommands | BeerReviewsA | BeerReviewsL | Heart | Adult | Cover | GLEAM ]
+    # ''', type=str)
     parser.add_argument('--test_size', help='a fraction of local hold-out dataset for evaluation (-1 for assigning pre-defined test split as local holdout set)', type=float, choices=[Range(-1, 1.)], default=0.2)
     parser.add_argument('--rawsmpl', help='a fraction of raw data to be used (valid only if one of `LEAF` datasets is used)', type=float, choices=[Range(0., 1.)], default=1.0)
     
