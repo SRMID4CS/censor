@@ -26,8 +26,17 @@ imagenet_std = [0.229, 0.224, 0.225]
 
 # imagenet_io_mean = [0.5, 0.5, 0.5]
 # imagenet_io_std = [0.5, 0.5, 0.5]
-imagenet_io_mean = [0.485, 0.456, 0.406]
+Bimagenet_io_mean = [0.485, 0.456, 0.406]
 imagenet_io_std = [0.229, 0.224, 0.225]
 
 ood_imagenet_mean = [0.485, 0.456, 0.406]
 ood_imagenet_std = [0.229, 0.224, 0.225]
+
+coco_mean = [0.485, 0.456, 0.406]
+coco_std = [0.229, 0.224, 0.225]
+
+coco_img_mean = [0.485, 0.456, 0.406]
+coco_img_std = [0.229, 0.224, 0.225]
+
+coco_txt_mean = [0.485, 0.456, 0.406]
+coco_txt_std = [0.229, 0.224, 0.225]
