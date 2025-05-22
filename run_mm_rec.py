@@ -304,7 +304,17 @@ if __name__ == "__main__":
             if args.accumulation == 0:
                 logger.info("Ground truth's size:{}".format(ground_truth[0].shape))
                 logger.info("Ground truth's size RAW:{}".format(ground_truth.shape))
-                target_loss, _, _ = loss_fn(model(ground_truth), labels)
+                if 'FedCola' in config['model']:
+                    if config['model'] == 'FedCola_IMG_TXT':
+                        outputs_for_rec = model([inputs, targets], feat_out=True)
+                    elif config['model'] == 'FedCola_IMG':
+                        outputs_for_rec = model([inputs,None])[0]
+                    elif config['model'] == 'FedCola_TXT':
+                        outputs_for_rec = model([None, targets])[1]
+                else:
+                    outputs_for_rec = model(inputs)
+                # TODO Fix loss function for task
+                target_loss, _, _ = loss_fn(outputs_for_rec, labels)
                 input_gradient = torch.autograd.grad(target_loss, model.parameters())
 
                 # compute the input_gradient norm
@@ -484,13 +494,22 @@ if __name__ == "__main__":
 
         # simulate FL training, train the model with more instances, then evaluate the model
         model.train()
+        logger.info(f"Model name: {config['model']}")
         for i, (inputs, targets) in enumerate(trainloader):
             logger.info(f"Epoch {epoch} batch {i} started")
             optimizer.zero_grad()
             inputs = inputs.to(**setup)
             targets = targets.to(**setup)
             targets = targets.long()
-            outputs = model(inputs)
+            if 'FedCola' in config['model']:
+                if config['model'] == 'FedCola_IMG_TXT':
+                    outputs = model([inputs, targets], feat_out=True)
+                elif config['model'] == 'FedCola_IMG':
+                    outputs = model([inputs,None])[0]
+                elif config['model'] == 'FedCola_TXT':
+                    outputs = model([None, targets])[1]
+            else:
+                outputs = model(inputs)
             loss, _, _ = loss_fn(outputs, targets)
             loss.backward()
             optimizer.step()
