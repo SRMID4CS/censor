@@ -1,10 +1,13 @@
 """Repeatable code parts concerning data loading."""
 
 
+from FedCola.src.datasets.coco import fetch_coco
 import torch
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
+from torchmultimodal.modules.losses.contrastive_loss_with_temperature import ContrastiveLossWithTemperature
+
 import os
 
 from ..consts import *
@@ -13,6 +16,7 @@ from .data import _build_bsds_sr, _build_bsds_dn
 from .loss import Classification, PSNR
 from .datasets import FFHQFolder
 
+from transformers import BertTokenizer
 
 resize_dict = {
     'ImageNet': 256, 'ImageNet_io' : 32,
@@ -80,8 +84,24 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
         trainset = [None]
         validset = _build_ood_imagenet(path, defs.augmentations, normalize, size=64)
         loss_fn = Classification()
+    elif 'Coco' in dataset:
+        # check modality if needed
+        if dataset == 'Coco_img':
+            modality = 'img'
+            loss_fn = Classification()
+        elif dataset == 'Coco_txt':
+            modality = 'txt'
+            loss_fn = Classification()
+        else:
+            modality = 'img+txt'
+            loss_fn = ContrastiveLossWithTemperature()
+        
+        tokenizer = BertTokenizer.from_pretrained(
+            'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'
+        )
 
-
+        transforms = [_get_transform(args, train=True), _get_transform(args, train=False)]
+        trainset, validset, args = fetch_coco(args=args, root=args.data_path, transforms=transforms, tokenizer=tokenizer, modality=modality)
 
     if MULTITHREAD_DATAPROCESSING:
         num_workers = min(torch.get_num_threads(), MULTITHREAD_DATAPROCESSING) if torch.get_num_threads() > 1 else 0
@@ -94,6 +114,59 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
                                               shuffle=False, drop_last=False, num_workers=num_workers, pin_memory=PIN_MEMORY)
 
     return loss_fn, trainloader, validloader
+
+
+
+# method to get transformation chain
+def _get_transform(args, train=False, target=False, n_channels=3, to_pil_first=False, dataset=None):
+
+    # NOTE: target tranform may be different from input transform, disable for both now
+    if n_channels == 3:
+        transform = torchvision.transforms.Compose(
+            [
+                torchvision.transforms.ToPILImage() if to_pil_first else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.Resize((args.resize, args.resize)) if args.resize is not None\
+                    else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.RandomCrop(args.crop, pad_if_needed=True, padding=4) if (args.crop is not None and train)\
+                    else torchvision.transforms.CenterCrop(args.crop) if (args.crop is not None and not train)\
+                        else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.RandomRotation(args.randrot) if (args.randrot is not None and train)\
+                    else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.RandomHorizontalFlip(args.randhf) if (args.randhf is not None and train)\
+                    else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.RandomVerticalFlip(args.randvf) if (args.randvf is not None and train)\
+                    else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.ColorJitter(brightness=args.randjit, contrast=args.randjit) if (args.randjit is not None and train)\
+                    else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]) if args.imnorm and dataset is None and not target\
+                    else torchvision.transforms.Normalize(mean=MEANS[dataset], std=STDS[dataset]) if args.imnorm and dataset is not None and not target\
+                        else torchvision.transforms.Lambda(lambda x: x)
+            ]
+        )
+    elif n_channels == 1:
+        transform = torchvision.transforms.Compose(
+            [
+                torchvision.transforms.ToPILImage() if to_pil_first else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.Resize((args.resize, args.resize)) if args.resize is not None\
+                    else torchvision.transforms.Lambda(lambda x: x),
+                # torchvision.transforms.RandomCrop(args.crop, pad_if_needed=True) if (args.crop is not None and train)\
+                #     else torchvision.transforms.CenterCrop(args.crop) if (args.crop is not None and not train)\
+                #         else torchvision.transforms.Lambda(lambda x: x),
+                # torchvision.transforms.RandomRotation(args.randrot) if (args.randrot is not None and train)\
+                #     else torchvision.transforms.Lambda(lambda x: x),
+                # torchvision.transforms.RandomHorizontalFlip(args.randhf) if (args.randhf is not None and train)\
+                #     else torchvision.transforms.Lambda(lambda x: x),
+                # torchvision.transforms.RandomVerticalFlip(args.randvf) if (args.randvf is not None and train)\
+                #     else torchvision.transforms.Lambda(lambda x: x),
+                # torchvision.transforms.ColorJitter(brightness=args.randjit, contrast=args.randjit) if (args.randjit is not None and train)\
+                #     else torchvision.transforms.Lambda(lambda x: x),
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(mean=[0.5], std=[0.5]) if args.imnorm and not target\
+                    else torchvision.transforms.Lambda(lambda x: x)
+            ]
+        )
+    return transform
 
 
 def _build_cifar10(data_path, augmentations=True, normalize=True):

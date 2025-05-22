@@ -12,10 +12,12 @@ from collections import OrderedDict
 import numpy as np
 from ..utils import set_random_seed
 
+import timm
 
 
 
-def construct_model(model, num_classes=10, seed=None, num_channels=3, modelkey=None):
+
+def construct_model(model, num_classes=10, seed=None, num_channels=3, modelkey=None, args=None):
     """Return various models."""
     if modelkey is None:
         if seed is None:
@@ -164,6 +166,16 @@ def construct_model(model, num_classes=10, seed=None, num_channels=3, modelkey=N
                             in_shape=in_shape, mult=4)
     elif model == 'LeNetZhu':
         model = LeNetZhu(num_channels=num_channels, num_classes=num_classes)
+    elif 'FedCola' in model:
+        # FedCola models
+        args.num_classes = 25499 #COCO
+
+        if model == 'FedCola_IMG':
+            model = timm.create_model(args.model_str, pretrained=args.pretrained, num_classes=[args.num_classes, None], modalities=[args.modalities[0], None], args=args, tasks=['cls', None], with_aux=args.with_aux, aux_trained=args.aux_trained, aux_attn_only=args.aux_attn_only, aux_mlp_only=args.aux_mlp_only)
+        elif model == 'FedCola_TXT':
+            model = timm.create_model(args.model_str, pretrained=args.pretrained, num_classes=[None, args.num_classes], modalities=[None, args.modalities[1]], args=args, tasks=[None, 'cls'], with_aux=args.with_aux, aux_trained=args.aux_trained, aux_attn_only=args.aux_attn_only, aux_mlp_only=args.aux_mlp_only)
+        elif model == 'FedCola_IMG_TXT':
+            model = timm.create_model(args.model_str, pretrained=args.pretrained, num_classes=[None, None], modalities=['img', 'txt'], args=args, tasks=['rtv','rtv'], with_aux=args.with_aux, aux_trained=args.aux_trained, aux_attn_only=args.aux_attn_only, aux_mlp_only=args.aux_mlp_only)
     else:
         raise NotImplementedError('Model not implemented.')
 
