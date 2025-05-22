@@ -67,7 +67,7 @@ nclass_dict = {'I32': 1000, 'I64': 1000, 'I128': 1000,
 
 parser = inversefed.options()
 
-parser.add_argument('--seed', default=1234, type=float, help='Local learning rate for federated averaging')
+# parser.add_argument('--seed', default=1234, type=float, help='Local learning rate for federated averaging')
 parser.add_argument('--batch_size', default=4, type=int, help='Number of mini batch for federated averaging')
 parser.add_argument('--local_lr', default=1e-4, type=float, help='Local learning rate for federated averaging')
 parser.add_argument('--checkpoint_path', default='', type=str, help='Local learning rate for federated averaging')
