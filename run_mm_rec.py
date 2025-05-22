@@ -32,6 +32,8 @@ import lpips
 import datetime
 import logging
 
+from FedCola.src.fedcola_options import add_fedcola_args
+
 def init_logger(output_dir, log_level=logging.INFO):
     """Initialize and configure the root logger."""
     # Configure the root logger
@@ -70,6 +72,12 @@ parser.add_argument('--local_lr', default=1e-4, type=float, help='Local learning
 parser.add_argument('--checkpoint_path', default='', type=str, help='Local learning rate for federated averaging')
 parser.add_argument('--gan', default='stylegan2', type=str, help='GAN model option:[stylegan2, biggan]')
 parser.add_argument('--config', default='./config_stylegan2', type=str, help='Path of selected config file.')
+
+
+# Add Args for FedCola
+
+parser = add_fedcola_args(parser)
+
 
 args = parser.parse_args()
 if args.target_id is None:
@@ -137,7 +145,7 @@ if __name__ == "__main__":
         logger.info("Set seed:{}".format(set_seed))
         torch.manual_seed(set_seed)
     
-    model, model_seed = inversefed.construct_model(config['model'], num_classes=nclass_dict[config['dataset']], num_channels=3, seed=set_seed)
+    model, model_seed = inversefed.construct_model(config['model'], num_classes=nclass_dict[config['dataset']], num_channels=3, seed=set_seed, args=args)
     model.to(**setup)
     
     if config['dataset'].startswith('FFHQ') or config['dataset'].endswith('FFHQ'):
@@ -243,6 +251,7 @@ if __name__ == "__main__":
         #Save the config file first
         inversefed.utils.save_to_table(os.path.join(config['output_dir'], config['exp_name']), name='configs', dryrun=args.dryrun, **config)
         target_id = config['target_id']
+        target_id_increment = config['target_id_increment']
         iter_dryrun = False
 
         for i in range(config['num_exp']): 
@@ -254,7 +263,7 @@ if __name__ == "__main__":
             ssim = {}
             mse_i = {}
 
-            target_id = config['target_id'] + i * 1000
+            target_id = config['target_id'] + i * target_id_increment
 
             tid_list = []
 
