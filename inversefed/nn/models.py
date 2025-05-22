@@ -169,6 +169,7 @@ def construct_model(model, num_classes=10, seed=None, num_channels=3, modelkey=N
     elif 'FedCola' in model:
         # FedCola models
         args.num_classes = 25499 #COCO
+        args.model_str = args.model_name
 
         if model == 'FedCola_IMG':
             model = timm.create_model(args.model_str, pretrained=args.pretrained, num_classes=[args.num_classes, None], modalities=[args.modalities[0], None], args=args, tasks=['cls', None], with_aux=args.with_aux, aux_trained=args.aux_trained, aux_attn_only=args.aux_attn_only, aux_mlp_only=args.aux_mlp_only)

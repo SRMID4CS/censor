@@ -33,6 +33,7 @@ import datetime
 import logging
 
 from FedCola.src.fedcola_options import add_fedcola_args
+import FedCola.src.models.mome
 
 def init_logger(output_dir, log_level=logging.INFO):
     """Initialize and configure the root logger."""
