@@ -215,7 +215,7 @@ def img_transform(img_size=32):
 
 def fetch_coco(args, root, transforms, tokenizer, modality='img+txt'):
     logger.info('[LOAD] [COCO] Fetching dataset!')
-    root = root+'/coco'
+    root = root+'coco'
     img_path = os.path.join(root, 'all_images')
     ann_path = os.path.join(root,'annotations','captions_train2014.json')
     instance_annFile_path = os.path.join(root,'annotations')
