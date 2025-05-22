@@ -303,6 +303,7 @@ if __name__ == "__main__":
 
             if args.accumulation == 0:
                 logger.info("Ground truth's size:{}".format(ground_truth[0].shape))
+                logger.info("Ground truth's size RAW:{}".format(ground_truth.shape))
                 target_loss, _, _ = loss_fn(model(ground_truth), labels)
                 input_gradient = torch.autograd.grad(target_loss, model.parameters())
 
