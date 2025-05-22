@@ -5,6 +5,24 @@ Add options for the FedCola
 def add_fedcola_args(parser):
 
     #####################
+    # Default arguments #
+    #####################
+    parser.add_argument('--goal', help='goal of the experiment', type=str, default=None)
+    parser.add_argument('--exp_name', help='name of the experiment', type=str, required=True)
+    parser.add_argument('--seed', help='global random seed', type=int, default=5959)
+    parser.add_argument('--server_device', help='device to use; `cpu`, `cuda`, `cuda:GPU_NUMBER`', type=str, default=f'cuda:{torch.cuda.device_count() - 1}')
+    parser.add_argument('--data_path', help='path to save & read raw data', type=str, default='./data')
+    parser.add_argument('--modality', help='modality of the dataset', type=str, default='ct')
+    parser.add_argument('--log_path', help='path to save logs', type=str, default='./log')
+    parser.add_argument('--result_path', help='path to save results', type=str, default='./result')
+    parser.add_argument('--use_tb', help='use TensorBoard for log tracking (if passed)', action='store_true')
+    parser.add_argument('--tb_port', help='TensorBoard port number (valid only if `use_tb`)', type=int, default=6006)
+    parser.add_argument('--tb_host', help='TensorBoard host address (valid only if `use_tb`)', type=str, default='0.0.0.0')
+    parser.add_argument('--distributed', help='enable distributed training', action='store_true')
+    parser.add_argument('--mm_distributed', help='enable distributed training for mm clients', action='store_true')
+    parser.add_argument('--mp', help='enable multi-processing instead of multi-threading', action='store_true')
+
+    #####################
     # Dataset arguments #
     #####################
     ## dataset configuration arguments (For MFL, none of these are used, please use --datasets, etc.)
