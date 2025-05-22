@@ -27,12 +27,12 @@
   # For input data
   generative_model : ''
   gen_dataset : 'ImageNet64'    # ['ImageNet64', 'FFHQ64']
-  dataset : 'IMAGENET_IO'       
-  data_path : '/depot/ninghui/data/imagenet/val'  # specify your dataset path
+  dataset : 'Coco_img'   # ['Coco', 'Coco_img', 'Coco_txt']     
+  data_path : 'N/A'  # specify your dataset path
 
   #For output data
-  exp_name : 'ex1_gan_free_imagenet'   #Same latent space search
-  output_dir : '/scratch/gilbreth/zhan4057/gradinv/results_gan_free/'
+  exp_name : 'ex1_FedCola_img'   #Same latent space search
+  output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
 
   #Choice for GAN-free methods
   geiping : true
@@ -41,7 +41,7 @@
   train_epochs: 3
   our_num_tries : 10
   #Defense parameter
-  defense_method : 'noise'
+  defense_method : None
   defense_setting : 
       noise : 0.01
       clipping : None
