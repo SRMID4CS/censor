@@ -31,7 +31,7 @@ centercrop_dict = {
     'PERM':64
 }
 
-def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, normalize=True):
+def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, normalize=True, args=None):
     """Return a dataloader with given dataset and augmentation, normalize data?."""
     path = os.path.expanduser(data_path)
 

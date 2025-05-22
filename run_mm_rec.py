@@ -139,7 +139,7 @@ if __name__ == "__main__":
     # Prepare for training
     # Get data:
 
-    loss_fn, trainloader, validloader = inversefed.construct_dataloaders(config['dataset'], defs, data_path=config['data_path'])
+    loss_fn, trainloader, validloader = inversefed.construct_dataloaders(config['dataset'], defs, data_path=config['data_path'], args=args)
 
     set_seed = config['set_seed']
     if isinstance(set_seed, int):
