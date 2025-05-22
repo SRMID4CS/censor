@@ -31,3 +31,6 @@ imagenet_io_std = [0.229, 0.224, 0.225]
 
 ood_imagenet_mean = [0.485, 0.456, 0.406]
 ood_imagenet_std = [0.229, 0.224, 0.225]
+
+mm_imdb_mean = [0.485, 0.456, 0.406]
+mm_imdb_std = [0.229, 0.224, 0.225]

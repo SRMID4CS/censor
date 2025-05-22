@@ -80,8 +80,8 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
         trainset = [None]
         validset = _build_ood_imagenet(path, defs.augmentations, normalize, size=64)
         loss_fn = Classification()
-    if dataset == 'MM_IMDB':
-        trainset, validset = _build_mm_imdb(path, defs.augmentations, normalize)
+    elif dataset == 'MM_IMDB':
+        trainset, validset = _build_mm_imdb(path)
         loss_fn = MultiLabelClassification()
 
 
@@ -101,6 +101,7 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
 
 from torch.utils.data import random_split, DataLoader
 
+
 def _build_mm_imdb(data_path):
     dataset_list = torch.load(data_path, weights_only=False)
     dataset = MMIMDbDataset(dataset_list)
@@ -113,14 +114,9 @@ def _build_mm_imdb(data_path):
     train_size = int(train_ratio * total_size)
     val_size = total_size - train_size
 
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size])
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-    batch_size = 4
-    
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
-    
-    return train_loader, val_loader
+    return train_dataset, val_dataset
 
     
 

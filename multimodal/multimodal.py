@@ -14,7 +14,29 @@ from sklearn.metrics import accuracy_score
 import logging
 import datetime
 
-from run_rec import init_logger
+def init_logger(output_dir, log_level=logging.INFO):
+    """Initialize and configure the root logger."""
+    # Configure the root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+
+    # File Handler
+    fh = logging.FileHandler(os.path.join(output_dir, "main.log"))
+    fh.setLevel(log_level)
+    fh_formatter = logging.Formatter('%(message)s')  # Only message content
+    fh.setFormatter(fh_formatter)
+    root_logger.addHandler(fh)
+
+    # Stream Handler (Console)
+    sh = logging.StreamHandler()
+    sh.setLevel(log_level)
+    sh_formatter = logging.Formatter('%(message)s')  # Only message content
+    sh.setFormatter(sh_formatter)
+    root_logger.addHandler(sh)
+
+    root_logger.info("-" * 80)
+
+    return root_logger
 
 # Define training and validation function
 
@@ -103,6 +125,5 @@ def train_and_validate(model, train_loader, val_loader, criterion, optimizer, de
         val_accuracies.append(val_acc)
 
         logger.info("[MM] " + f"Epoch [{epoch+1}/{num_epochs}] | "
-              f"Train Loss: {train_loss:.4f} | Train Acc: {
-                  train_acc*100:.2f}% | "
+              f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:.2f}% | "
               f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc*100:.2f}%")

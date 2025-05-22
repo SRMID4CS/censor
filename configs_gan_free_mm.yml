@@ -11,7 +11,7 @@
 
   num_images : 1   # the number of images to reconstruct at a batch
   num_exp : 10     # the number of experiments
-  target_id : 9000
+  target_id : 1
   lr : 0.1            #learning rate for Yin et al.
   total_variation : 0.0001     #the coefficient of total variation 
   image_norm : 0.000001    #the coefficient of norm regularizer for Yin et al.
@@ -26,8 +26,8 @@
   # For input data
   generative_model : ''
   gen_dataset : 'ImageNet64'    # ['ImageNet64', 'FFHQ64']
-  dataset : 'MMIMDB'       
-  data_path : '/home/ubuntu/mnt-disk/data/mmimdb_exp_1/processed_mmimdb_dataset_multiclass_128_size_200_samples.pt'  # specify your dataset path
+  dataset : 'MM_IMDB'
+  data_path : '/home/ubuntu/mnt-disk/data/mmimdb_exp_1/processed_mmimdb_dataset_multiclass_128_size_300_samples.pt'  # specify your dataset path
 
   #For output data
   exp_name : 'mm_ex1_gan_free_imdb'   #Same latent space search
