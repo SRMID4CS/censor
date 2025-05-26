@@ -433,7 +433,20 @@ if __name__ == "__main__":
                     output_den = torch.clamp(output * ds + dm, 0, 1)
                     ground_truth_den = torch.clamp(ground_truth * ds + dm, 0, 1)
                     # logger.info("output's dimension:{} ground_truth's dimension:{}".format(output.shape, ground_truth.shape))
-                    feat_mse = (model(output) - model(ground_truth)).pow(2).mean().item()
+                    if 'FedCola' in config['model']:
+                        if config['model'] == 'FedCola_IMG_TXT':
+                            reconstructed_output_feat = model([output, labels], feat_out=True)
+                            reconstructed_ground_truth_feat = model([ground_truth, labels], feat_out=True)
+                        elif config['model'] == 'FedCola_IMG':
+                            reconstructed_output_feat = model([output,None])[0]
+                            reconstructed_ground_truth_feat = model([ground_truth,None])[0]
+                        elif config['model'] == 'FedCola_TXT':
+                            reconstructed_output_feat = model([None, output])[1]
+                            reconstructed_ground_truth_feat = model([None, ground_truth])[1]
+                    else:
+                        reconstructed_output_feat = model(output)
+                        reconstructed_ground_truth_feat = model(ground_truth)
+                    feat_mse = (reconstructed_output_feat - reconstructed_ground_truth_feat).pow(2).mean().item()
                     test_mse = (output_den - ground_truth_den).pow(2).mean().item()
                     ssim_score, _ = inversefed.metrics.ssim_batch(output, ground_truth)
                     with torch.no_grad():
