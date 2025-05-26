@@ -382,7 +382,9 @@ if __name__ == "__main__":
                 input_parameters = inversefed.reconstruction_algorithms.loss_steps(model, ground_truth,
                                                                                 labels,
                                                                                 lr=local_lr,
-                                                                                local_steps=local_gradient_steps, use_updates=True, batch_size=batch_size)
+                                                                                local_steps=local_gradient_steps, use_updates=True, batch_size=batch_size,
+                                                                                config=config_m
+                                                                                )
                 input_parameters = [p.detach() for p in input_parameters]
 
                 rec_machine = inversefed.FedAvgReconstructor(model, (dm, ds), local_gradient_steps,

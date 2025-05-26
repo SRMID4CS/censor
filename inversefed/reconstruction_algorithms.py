@@ -1278,7 +1278,8 @@ class FedAvgReconstructor(GradientReconstructor):
                 gradient = loss_steps(self.model, batch_input, batch_label, loss_fn=self.loss_fn,
                                         local_steps=self.local_steps, lr=self.local_lr,
                                         use_updates=self.use_updates,
-                                        batch_size=self.batch_size)
+                                        batch_size=self.batch_size,
+                                        config=self.config)
 
                 rec_loss = reconstruction_costs([gradient], input_gradient[i],
                                                 cost_fn=self.config['cost_fn'], indices=self.config['indices'],
@@ -1331,7 +1332,7 @@ class FedAvgReconstructor(GradientReconstructor):
             batch_label = label[start_idx:end_idx]
             # loss = self.loss_fn(self.model(batch_input), batch_label)
             gradient = loss_steps(self.model, batch_input, batch_label, loss_fn=self.loss_fn,
-                                local_steps=self.local_steps, lr=self.local_lr, use_updates=self.use_updates)
+                                local_steps=self.local_steps, lr=self.local_lr, use_updates=self.use_updates, config=self.config)
             rec_loss = reconstruction_costs([gradient], input_gradient[i],
                                     cost_fn=self.config['cost_fn'], indices=self.config['indices'],
                                     weights=self.config['weights'])
