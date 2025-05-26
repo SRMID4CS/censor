@@ -312,7 +312,7 @@ if __name__ == "__main__":
                     elif config['model'] == 'FedCola_TXT':
                         outputs_for_rec = model([None, ground_truth])[1]
                 else:
-                    outputs_for_rec = model(inputs)
+                    outputs_for_rec = model(ground_truth)
                 # TODO Fix loss function for task
                 target_loss, _, _ = loss_fn(outputs_for_rec, labels)
                 input_gradient = torch.autograd.grad(target_loss, model.parameters())
