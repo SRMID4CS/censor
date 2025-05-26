@@ -217,6 +217,7 @@ if __name__ == "__main__":
                         KLD = config['KLD'],
                         gias_lr=config['gias_lr'],
                         gias_iterations=config['gias_iterations'],
+                        model=config['model'],
                         )
         elif config['optim'] == 'GAN_free':
             config_m = dict(cost_fn=config['cost_fn'],
@@ -242,6 +243,7 @@ if __name__ == "__main__":
                         gias=False,
                         gias_lr=0.0,
                         gias_iterations=0,
+                        model=config['model'],
                         )
 
         G = None

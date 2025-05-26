@@ -1117,7 +1117,16 @@ class GradientReconstructor():
                 end_idx = start_idx + batch_size
                 batch_input = x_trial[start_idx:end_idx]
                 batch_label = label[start_idx:end_idx]
-                loss = self.loss_fn(self.model(batch_input), batch_label)
+                if self.config['model'] == "FedCola_IMG":
+                    loss = self.loss_fn(self.model([batch_input, None])[0], batch_label)
+                elif self.config['model'] == "FedCola_TXT":
+                    # todo
+                    loss = self.loss_fn(self.model([None, batch_input])[1], batch_label)
+                elif self.config['model'] == "FedCola_IMG_TXT":
+                    # todo RTV
+                    loss = self.loss_fn(self.model([batch_input, batch_label]), batch_label)
+                else:
+                    loss = self.loss_fn(self.model(batch_input), batch_label)
                 gradient = torch.autograd.grad(loss, self.model.parameters(), create_graph=True)
                 gradient = [grad for grad in gradient]
                 #apply defense
@@ -1188,7 +1197,16 @@ class GradientReconstructor():
             end_idx = start_idx + batch_size
             batch_input = x_trial[start_idx:end_idx]
             batch_label = label[start_idx:end_idx]
-            loss = self.loss_fn(self.model(batch_input), batch_label)
+            if self.config['model'] == "FedCola_IMG":
+                loss = self.loss_fn(self.model([batch_input, None])[0], batch_label)
+            elif self.config['model'] == "FedCola_TXT":
+                # todo
+                loss = self.loss_fn(self.model([None, batch_input])[1], batch_label)
+            elif self.config['model'] == "FedCola_IMG_TXT":
+                # todo RTV
+                loss = self.loss_fn(self.model([batch_input, batch_label]), batch_label)
+            else:
+                loss = self.loss_fn(self.model(batch_input), batch_label)
             gradient = torch.autograd.grad(loss, self.model.parameters(), create_graph=False)
             gradient = [grad for grad in gradient]
             #apply defense
@@ -1320,17 +1338,33 @@ class FedAvgReconstructor(GradientReconstructor):
             total_loss += rec_loss
         return total_loss
 
-def loss_steps(model, inputs, labels, loss_fn=torch.nn.CrossEntropyLoss(), lr=1e-4, local_steps=4, use_updates=True, batch_size=0):
+def loss_steps(model, inputs, labels, loss_fn=torch.nn.CrossEntropyLoss(), lr=1e-4, local_steps=4, use_updates=True, batch_size=0, config=DEFAULT_CONFIG):
     """Take a few gradient descent steps to fit the model to the given input."""
     patched_model = MetaMonkey(model)
     if use_updates:
         patched_model_origin = deepcopy(patched_model)
     for i in range(local_steps):
         if batch_size == 0:
-            outputs = patched_model(inputs, patched_model.parameters)
+            # TODO
+            if config['model'] == 'FedCola_IMG_TXT':
+                outputs = patched_model([inputs, labels], patched_model.parameters, feat_out=True)
+            elif config['model'] == 'FedCola_IMG':
+                outputs = patched_model([inputs,None], patched_model.parameters)[0]
+            elif config['model'] == 'FedCola_TXT':
+                outputs = patched_model([None, inputs], patched_model.parameters)[1]
+            else:
+                outputs = patched_model(inputs, patched_model.parameters)
             labels_ = labels
         else:
-            outputs = patched_model(inputs, patched_model.parameters)
+            # TODO
+            if config['model'] == 'FedCola_IMG_TXT':
+                outputs = patched_model([inputs, labels], patched_model.parameters, feat_out=True)
+            elif config['model'] == 'FedCola_IMG':
+                outputs = patched_model([inputs,None], patched_model.parameters)[0]
+            elif config['model'] == 'FedCola_TXT':
+                outputs = patched_model([None, inputs], patched_model.parameters)[1]
+            else:
+                outputs = patched_model(inputs, patched_model.parameters)
             labels_ = labels
         loss = loss_fn(outputs, labels_).sum()
         grad = torch.autograd.grad(loss, patched_model.parameters.values(),
