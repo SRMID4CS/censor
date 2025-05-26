@@ -85,8 +85,8 @@ DEFAULT_CONFIG = dict(signed=False,
                       project=False,
                       defense_method=[],
                       defense_setting=[],
-                      num_sample=10
-
+                      num_sample=10,
+                      model = "N/A",  # Model name, used for loading the model
                       )
 
 def _validate_config(config):
