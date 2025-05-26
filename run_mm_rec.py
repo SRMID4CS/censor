@@ -310,7 +310,7 @@ if __name__ == "__main__":
                     elif config['model'] == 'FedCola_IMG':
                         outputs_for_rec = model([ground_truth,None])[0]
                     elif config['model'] == 'FedCola_TXT':
-                        outputs_for_rec = model([None, labels])[1]
+                        outputs_for_rec = model([None, ground_truth])[1]
                 else:
                     outputs_for_rec = model(inputs)
                 # TODO Fix loss function for task
@@ -507,7 +507,7 @@ if __name__ == "__main__":
                 elif config['model'] == 'FedCola_IMG':
                     outputs = model([inputs,None])[0]
                 elif config['model'] == 'FedCola_TXT':
-                    outputs = model([None, targets])[1]
+                    outputs = model([None, inputs])[1]
             else:
                 outputs = model(inputs)
             loss, _, _ = loss_fn(outputs, targets)
