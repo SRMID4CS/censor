@@ -1125,11 +1125,9 @@ class GradientReconstructor():
                 if self.config['model'] == "FedCola_IMG":
                     loss = self.loss_fn(self.model([batch_input, None])[0], batch_label)
                 elif self.config['model'] == "FedCola_TXT":
-                    # todo
                     loss = self.loss_fn(self.model([None, batch_input])[1], batch_label)
                 elif self.config['model'] == "FedCola_IMG_TXT":
-                    # todo RTV
-                    loss = self.loss_fn(self.model([batch_input, batch_label]), batch_label)
+                    loss = self.loss_fn(*self.model([batch_input, batch_label], feat_out=True))
                 else:
                     loss = self.loss_fn(self.model(batch_input), batch_label)
                 gradient = torch.autograd.grad(loss, self.model.parameters(), create_graph=True)
@@ -1205,11 +1203,9 @@ class GradientReconstructor():
             if self.config['model'] == "FedCola_IMG":
                 loss = self.loss_fn(self.model([batch_input, None])[0], batch_label)
             elif self.config['model'] == "FedCola_TXT":
-                # todo
                 loss = self.loss_fn(self.model([None, batch_input])[1], batch_label)
             elif self.config['model'] == "FedCola_IMG_TXT":
-                # todo RTV
-                loss = self.loss_fn(self.model([batch_input, batch_label]), batch_label)
+                loss = self.loss_fn(*self.model([batch_input, batch_label], feat_out=True), batch_label)
             else:
                 loss = self.loss_fn(self.model(batch_input), batch_label)
             gradient = torch.autograd.grad(loss, self.model.parameters(), create_graph=False)
