@@ -630,14 +630,30 @@ class TextEmbedding(Embedding):
 
             # self.cls_token = nn.Parameter(torch.zeros(1, 1, num_features)) # Not needed since the tokenizer will give u the cls token.
         
-        def forward(self, x):
-            x = self.text_embeddings(x)
-            B, L, _ = x.shape
+        def forward(self, input_ids=None, inputs_embeds=None, attention_mask=None, token_type_ids=None):
+            """
+            Supports both token IDs (standard training) and precomputed embeddings (reconstruction).
+            """
+            if input_ids is not None and inputs_embeds is not None:
+                raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time.")
+            if input_ids is None and inputs_embeds is None:
+                raise ValueError("You must specify either input_ids or inputs_embeds.")
+
+            # x = self.text_embeddings(x)
+            # B, L, _ = x.shape
 
             # cls_tokens = self.cls_token.expand(B, -1, -1)
             # x = torch.cat((cls_tokens, x), dim=1)
         
-            return x
+            # return x
+
+            # Forward through BERT embeddings
+            return self.text_embeddings(
+                input_ids=input_ids,
+                inputs_embeds=inputs_embeds,
+                attention_mask=attention_mask,
+                token_type_ids=token_type_ids
+            )
 
 class ClassificationHead(nn.Module):
     def __init__(self, num_features, num_classes, *args, **kwargs) -> None:
@@ -894,8 +910,20 @@ class ModalityAgnosticTransformer(nn.Module):
             if len(x[i].shape)==4 and x[i].shape[1]==1:
                 x[i] = x[i].repeat(1,3,1,1)
 
-            embeds.append(self.embeddings[i](x[i]))
-        
+            # Add support for inputs_embeds for text modality to skip if embedding is already computed
+            if modality == 'img':
+                embeds.append(self.embeddings[i](x[i]))
+            elif modality == 'txt':
+                # If inputs_embeds is provided, use it directly
+                if x[i] is not None and isinstance(x[i], torch.Tensor) and x[i].dim() == 3:
+                    # Assuming x[i] is of shape (batch_size, seq_length, embed_dim)
+                    embeds.append(self.embeddings[i](input_ids=None, inputs_embeds=x[i]))
+                elif x[i] is not None and isinstance(x[i], torch.Tensor) and x[i].dim() == 2:
+                    # Assuming x[i] is of shape (batch_size, seq_length)
+                    embeds.append(self.embeddings[i](input_ids=x[i], inputs_embeds=None))
+                else:
+                    raise ValueError("[Incorrect Dim] For text modality, input must be either inputs_embeds or input_ids.")
+
         # print(embeds[0].shape, embeds[1].shape)
 
         feats = [None for _ in range(len(self.modalities))]
