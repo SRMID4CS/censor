@@ -1195,11 +1195,14 @@ class GradientReconstructor():
                     loss = self.loss_fn(*self.model([batch_input, batch_label], feat_out=True))
                 else:
                     loss = self.loss_fn(self.model(batch_input), batch_label)
-                # TODO FIX TEMP fix to avoid unused parameters warning
+                # Fix to allow unused since the attack bypasses the BERT model, 
+                # only the positional and type encodings are used and doesn't participate in the loss
                 gradient = torch.autograd.grad(loss, self.model.parameters(), create_graph=True, allow_unused=True)
-                for g, p in zip(gradient, self.model.parameters()):
-                    if g is None:
-                        print(f"Parameter {p.shape} is unused in this forward pass.")
+                # Uncomment the following line to debug unused parameters
+                # for g, p in zip(gradient, self.model.parameters()):
+                #     if g is None:
+                #         print(f"Parameter {p.shape} is unused in this forward pass.")
+                # Output would be like: "Parameter torch.Size([30522, 384]) is unused in this forward pass."
                 gradient = [g if g is not None else torch.zeros_like(p) for g, p in zip(gradient, self.model.parameters())]
                 #apply defense
                 if self.config['defense_method'] is not None:
