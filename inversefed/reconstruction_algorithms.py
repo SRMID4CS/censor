@@ -3,6 +3,8 @@
 import torch
 import torch.nn as nn
 # from torch.nn.parallel import DistributedDataParallel as DDP
+from torchmultimodal.modules.losses.contrastive_loss_with_temperature import ContrastiveLossWithTemperature
+torch.nn.ContrastiveLoss = ContrastiveLossWithTemperature
 
 from collections import defaultdict, OrderedDict
 from inversefed.nn import MetaMonkey
@@ -176,7 +178,10 @@ class GradientReconstructor():
         self.do_group_mean = False
         self.group_mean = None
 
-        self.loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
+        if self.config['model'] == 'FedCola_IMG_TXT':
+            self.loss_fn = torch.nn.ContrastiveLoss()
+        else:
+            self.loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
         self.noises = [None for i in range(self.config['restarts'])]
         self.initial_noises = [None for i in range(self.config['restarts'])]
         self.gen_outs = [[None] for i in range(self.config['restarts'])]
