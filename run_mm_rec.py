@@ -297,7 +297,19 @@ if __name__ == "__main__":
 
                 ground_truth = torch.stack(ground_truth)
                 labels = torch.cat(labels)
-            img_shape = (3, ground_truth.shape[2], ground_truth.shape[3])
+
+            if config['model'] == 'FedCola_IMG_TXT':
+                input_shape = (3, ground_truth.shape[-2], ground_truth.shape[-1])
+                logger.info("Input shape for FedCola_IMG_TXT: {}".format(input_shape))
+            elif config['model'] == 'FedCola_IMG':
+                input_shape = (3, ground_truth.shape[-2], ground_truth.shape[-1])
+                logger.info("Input shape for FedCola_IMG: {}".format(input_shape))
+            elif config['model'] == 'FedCola_TXT':
+                input_shape = (ground_truth.shape[-2], ground_truth.shape[-1])
+                logger.info("Input shape for FedCola_TXT: {}".format(input_shape))
+            else:
+                input_shape = (3, ground_truth.shape[2], ground_truth.shape[3])
+                logger.info("Input shape: {}".format(input_shape))
 
             # Run reconstruction
             if config['bn_stat'] > 0:
@@ -375,7 +387,7 @@ if __name__ == "__main__":
                 if G is None:
                     G = rec_machine.G
                 logger.info("Real labels:{}".format(labels))
-                result = rec_machine.reconstruct(input_gradient, labels, img_shape=img_shape, dryrun=iter_dryrun)
+                result = rec_machine.reconstruct(input_gradient, labels, img_shape=input_shape, dryrun=iter_dryrun)
                 if iter_dryrun:
                     continue
             else:
@@ -399,7 +411,7 @@ if __name__ == "__main__":
                         G = rec_machine.G_synthesis
                     else:
                         G = rec_machine.G
-                result = rec_machine.reconstruct(input_parameters, labels, img_shape=img_shape, dryrun=args.dryrun)
+                result = rec_machine.reconstruct(input_parameters, labels, img_shape=input_shape, dryrun=args.dryrun)
 
             #lpips
             lpips_loss = lpips.LPIPS(net='vgg', spatial=False).to(**setup)
