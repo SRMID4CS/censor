@@ -35,6 +35,9 @@ import logging
 from FedCola.src.fedcola_options import add_fedcola_args
 import FedCola.src.models.mome
 
+from utils.text_utils import de_embed_text
+
+
 def init_logger(output_dir, log_level=logging.INFO):
     """Initialize and configure the root logger."""
     # Configure the root logger
@@ -483,8 +486,28 @@ if __name__ == "__main__":
 
                 # Save the resulting image
                 if args.save_image and output is not None:
-                    for j in range(config['num_images']):
-                        torchvision.utils.save_image(output_den[j:j + 1, ...], os.path.join(ouput_dir, f'{tid_list[j]}_gen.png'))
+                    if config['model'] == 'FedCola_IMG':
+                        # Same as Default - Save the image
+                        for j in range(config['num_images']):
+                            torchvision.utils.save_image(output_den[j:j + 1, ...], os.path.join(ouput_dir, f'{tid_list[j]}_gen.png'))
+                    elif config['model'] == 'FedCola_TXT':
+                        # Save the text after deembedding
+                        for j in range(config['num_images']):
+                            sentence_embedding_seq = output_den[j:j + 1, ...]
+                            # convert to text
+                            sentence = de_embed_text(sentence_embedding_seq)
+                            with open(os.path.join(ouput_dir, f'{tid_list[j]}_gen.txt'), 'w') as f:
+                                f.write(sentence)
+
+                    elif config['model'] == 'FedCola_IMG_TXT':
+                        # Save both image and text
+                        for j in range(config['num_images']):
+                            torchvision.utils.save_image(output_den[j:j + 1, ...], os.path.join(ouput_dir, f'{tid_list[j]}_gen.png'))
+                    else:
+                        # Default - Save the image
+                        for j in range(config['num_images']):
+                            torchvision.utils.save_image(output_den[j:j + 1, ...], os.path.join(ouput_dir, f'{tid_list[j]}_gen.png'))
+
                 # Update target id
                 target_id = target_id_
                 
