@@ -905,7 +905,7 @@ class ModalityAgnosticTransformer(nn.Module):
                 assert x[i] is None, 'None modality should have None input.'
                 embeds.append(None)
                 continue
-            if len(x[i].shape)==4 and x[i].shape[1]==1:
+            if modality == 'img' and len(x[i].shape)==4 and x[i].shape[1]==1:
                 x[i] = x[i].repeat(1,3,1,1)
 
             # Add support for inputs_embeds for text modality to skip if embedding is already computed
