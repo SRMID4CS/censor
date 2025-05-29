@@ -630,7 +630,7 @@ class TextEmbedding(Embedding):
 
             # self.cls_token = nn.Parameter(torch.zeros(1, 1, num_features)) # Not needed since the tokenizer will give u the cls token.
         
-        def forward(self, input_ids=None, inputs_embeds=None, attention_mask=None, token_type_ids=None):
+        def forward(self, input_ids=None, inputs_embeds=None):
             """
             Supports both token IDs (standard training) and precomputed embeddings (reconstruction).
             """
@@ -651,8 +651,6 @@ class TextEmbedding(Embedding):
             return self.text_embeddings(
                 input_ids=input_ids,
                 inputs_embeds=inputs_embeds,
-                attention_mask=attention_mask,
-                token_type_ids=token_type_ids
             )
 
 class ClassificationHead(nn.Module):
