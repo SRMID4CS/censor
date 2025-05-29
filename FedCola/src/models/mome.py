@@ -913,7 +913,7 @@ class ModalityAgnosticTransformer(nn.Module):
                 embeds.append(self.embeddings[i](x[i]))
             elif modality == 'txt':
                 # If inputs_embeds is provided, use it directly
-                if x[i] is not None and isinstance(x[i], torch.Tensor) and x[i].dim() == 3:
+                if x[i] is not None and isinstance(x[i], torch.Tensor) and x[i].dim() == 4:
                     # Assuming x[i] is of shape (batch_size, seq_length, embed_dim)
                     embeds.append(self.embeddings[i](input_ids=None, inputs_embeds=x[i]))
                 elif x[i] is not None and isinstance(x[i], torch.Tensor) and x[i].dim() == 2:
