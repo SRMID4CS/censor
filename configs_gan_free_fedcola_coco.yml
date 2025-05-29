@@ -10,7 +10,7 @@
   restarts : 4
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 5     # the number of experiments
+  num_exp : 1     # the number of experiments
   target_id : 10 # the target image id + iterative incrementation of id
   target_id_increment : 1 # the incrementation of target image id
   lr : 0.1            #learning rate for Yin et al.
@@ -20,7 +20,7 @@
   
   bn_stat : 0       #choose if we use bn statistic to regularizer 
 
-  max_iterations : 1000    #Maximum number of iterations for reconstruction.
+  max_iterations : 24000    #Maximum number of iterations for reconstruction.
 
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
 
@@ -38,12 +38,12 @@
   geiping : true
   yin : false
 
-  train_epochs: 3
+  train_epochs: 10
   our_num_tries : 10
   #Defense parameter
   defense_method : None
   defense_setting : 
-      noise : 0.01
+      noise : None
       clipping : None
       compression : None
       representation : None
