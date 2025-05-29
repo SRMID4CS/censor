@@ -1140,7 +1140,7 @@ class GradientReconstructor():
         Returns:
             List[Tensor]: List of shape (restarts, num_images, seq_len, embed_dim)
         """
-        shape = (self.config['restarts'], self.num_images, 40, 768)  # shape is (seq_len, embed_dim)
+        shape = (self.config['restarts'], self.num_images, 40, 384)  # shape is (seq_len, embed_dim)
 
         if self.text_embeds is not None:
             # Reuse old data if present, resized if needed
