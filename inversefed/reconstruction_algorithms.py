@@ -188,7 +188,8 @@ class GradientReconstructor():
         self.ys = [None for i in range(self.config['restarts'])]    #For biggan's cond_vector
         self.iDLG = True
         self.images = None
-                
+        self.text_embeds = None # Dummy text embedding reconstruction
+
         # initialization
         if G:
             logger.info("Loading G...")
@@ -429,7 +430,16 @@ class GradientReconstructor():
             dummy_z = [None for _ in range(self.config['restarts'])]
             for trial in range(self.config['restarts']):
                 dummy_z[trial] = self.init_dummy_z(self.G, self.generative_model_name, self.num_images)
-            self.images = self._init_images(img_shape)
+            
+            if self.config['model'] == 'FedCola_IMG':
+                self.images = self._init_images(img_shape)
+            elif self.config['model'] == 'FedCola_TXT':
+                self.text_embeds = self._init_text_embeds(img_shape)
+            elif self.config['model'] == 'FedCola_IMG_TXT':
+                self.images = self._init_images(img_shape)
+                self.text_embeds = self._init_text_embeds((labels.shape[-2], labels.shape[-1]))
+            else:
+                self.images = self._init_images(img_shape)
             
             if dryrun:
                 return None
@@ -478,7 +488,15 @@ class GradientReconstructor():
 
  
         else:  #GAN-free method
-            self.images = self._init_images(img_shape)
+            if self.config['model'] == 'FedCola_IMG':
+                self.images = self._init_images(img_shape)
+            elif self.config['model'] == 'FedCola_TXT':
+                self.text_embeds = self._init_text_embeds(img_shape)
+            elif self.config['model'] == 'FedCola_IMG_TXT':
+                self.images = self._init_images(img_shape)
+                self.text_embeds = self._init_text_embeds((labels.shape[-2], labels.shape[-1]))
+            else:
+                self.images = self._init_images(img_shape)
             if self.config['yin']:
                 self.config['cost_fn'] = 'l2'
                 self.config['optim'] = 'adam'
@@ -810,7 +828,16 @@ class GradientReconstructor():
 
 
         max_iterations = max_iterations
-        x = self._init_images(img_shape)
+        if self.config['model'] == 'FedCola_IMG':
+            x = self._init_images(img_shape)
+        elif self.config['model'] == 'FedCola_TXT':
+            x = self._init_text_embeds(img_shape)
+        elif self.config['model'] == 'FedCola_IMG_TXT':
+            x = self._init_images(img_shape)
+            # TODO Check
+            labels = self._init_text_embeds((labels.shape[-2], labels.shape[-1]))
+        else:
+            x = self._init_images(img_shape)
         # scores = torch.zeros(self.config['restarts'])
         
         try:
@@ -818,9 +845,13 @@ class GradientReconstructor():
             optimizer = [None for _ in range(self.config['restarts'])]
             scheduler = [None for _ in range(self.config['restarts'])]
             _x = [None for _ in range(self.config['restarts'])]
+            if self.config['model'] == 'FedCola_IMG_TXT':
+                _labels = [None for _ in range(self.config['restarts'])]
 
             for trial in range(self.config['restarts']):
                 _x[trial] = x[trial]
+                if self.config['model'] == 'FedCola_IMG_TXT':
+                    _labels[trial] = labels[trial]
 
                 if self.G:
                     self.G.to(self.device)
@@ -836,13 +867,20 @@ class GradientReconstructor():
                     else:
                         raise ValueError()
                 else:
+                    #Make labels and x trainable conditionally
                     _x[trial].requires_grad = True
+                    if self.config['model'] == 'FedCola_IMG_TXT':
+                        _labels[trial].requires_grad = True
+                        to_optimize = [_x[trial], _labels[trial]]
+                    else:
+                        to_optimize = [_x[trial]]
+
                     if self.config['optim'] == 'adam':
-                        optimizer[trial] = torch.optim.Adam([_x[trial]], lr=self.config['lr'])
+                        optimizer[trial] = torch.optim.Adam(to_optimize, lr=self.config['lr'])
                     elif self.config['optim'] == 'sgd':  # actually gd
-                        optimizer[trial] = torch.optim.SGD([_x[trial]], lr=0.01, momentum=0.9, nesterov=True)
+                        optimizer[trial] = torch.optim.SGD(to_optimize, lr=0.01, momentum=0.9, nesterov=True)
                     elif self.config['optim'] == 'LBFGS':
-                        optimizer[trial] = torch.optim.LBFGS([_x[trial]])
+                        optimizer[trial] = torch.optim.LBFGS(to_optimize)
                     else:
                         raise ValueError()
 
@@ -916,8 +954,12 @@ class GradientReconstructor():
                         rec_loss = rec_loss.item()
                     else:
                         imgs = _x[trial]
-                        
-                        closure = self._gradient_closure(optimizer[trial], imgs, self.input_data, labels, losses)
+                        if self.config['model'] == 'FedCola_IMG_TXT':
+                            Ys = _labels[trial]
+                        else:
+                            Ys = labels
+
+                        closure = self._gradient_closure(optimizer[trial], imgs, self.input_data, Ys, losses)
                         rec_loss = optimizer[trial].step(closure)
                         rec_loss = rec_loss.item()
 
@@ -1089,6 +1131,29 @@ class GradientReconstructor():
 
 
         return x_optimal.detach(), stats
+
+    def _init_text_embeds(self, shape):
+        """
+        Initialize dummy text embeddings for reconstruction attack.
+        Mirrors _init_images logic but for text data.
+
+        Returns:
+            List[Tensor]: List of shape (restarts, num_images, seq_len, embed_dim)
+        """
+        shape = (self.config['restarts'], self.num_images, *shape)  # shape is (seq_len, embed_dim)
+
+        if self.text_embeds is not None:
+            # Reuse old data if present, resized if needed
+            return [text.detach().clone().to(self.device) for text in self.text_embeds]
+        elif self.config['init'] == 'randn':
+            return torch.randn(shape, **self.setup)
+        elif self.config['init'] == 'rand':
+            return (torch.rand(shape, **self.setup) - 0.5) * 2
+        elif self.config['init'] == 'zeros':
+            return torch.zeros(shape, **self.setup)
+        else:
+            raise ValueError(f"Unknown init type: {self.config['init']}")
+
 
     def _init_images(self, img_shape):
         if self.images is not None:
