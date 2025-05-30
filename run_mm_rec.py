@@ -36,6 +36,7 @@ from FedCola.src.fedcola_options import add_fedcola_args
 import FedCola.src.models.mome
 
 from utils.text_utils import de_embed_text
+from transformers import BertTokenizer
 
 
 def init_logger(output_dir, log_level=logging.INFO):
@@ -152,7 +153,17 @@ if __name__ == "__main__":
     
     model, model_seed = inversefed.construct_model(config['model'], num_classes=nclass_dict[config['dataset']], num_channels=3, seed=set_seed, args=args)
     model.to(**setup)
+
+    bert_embedding = model.embeddings[0] if hasattr(model, 'embeddings') else None
+    if bert_embedding is not None:
+        logger.info("BERT model loaded for text embedding: {}".format(bert_embedding))
+    else:
+        logger.info("No BERT model found, using default model.")
+
     
+    bert_tokenizer = BertTokenizer.from_pretrained(
+        'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'
+    )
     if config['dataset'].startswith('FFHQ') or config['dataset'].endswith('FFHQ'):
         dm = torch.as_tensor(getattr(inversefed.consts, f'cifar10_mean'), **setup)[:, None, None]
         ds = torch.as_tensor(getattr(inversefed.consts, f'cifar10_std'), **setup)[:, None, None]
@@ -516,7 +527,7 @@ if __name__ == "__main__":
                         for j in range(config['num_images']):
                             sentence_embedding_seq = output_den[j:j + 1, ...]
                             # convert to text
-                            sentence = de_embed_text(sentence_embedding_seq)
+                            sentence = de_embed_text(sentence_embedding_seq, bert_embedding=bert_embedding)
                             with open(os.path.join(ouput_dir, f'{tid_list[j]}_gen.txt'), 'w') as f:
                                 f.write(sentence)
 
@@ -539,7 +550,19 @@ if __name__ == "__main__":
                 
 
             for j in range(config['num_images']):
-                torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
+                # TODO Save the ground truth txt
+                if config['model'] == 'FedCola_IMG':
+                    torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
+                elif config['model'] == 'FedCola_TXT':
+                    # Save the text after deembedding
+                    sentence_token_ids = ground_truth_den[j:j + 1, ...]
+                    # convert to text
+                    sentence = bert_tokenizer.convert_ids_to_tokens(sentence_token_ids.squeeze().tolist())
+                    print("Ground truth tokens:", sentence)
+                    sentence = bert_tokenizer.convert_tokens_to_string(sentence)
+                    print("Ground truth sentence:", sentence)
+                    with open(os.path.join(save_dir, f'{tid_list[j]}_gt.txt'), 'w') as f:
+                        f.write(sentence)
             #one row represents psnrs of a batch
         
         learning_rate = 0.001

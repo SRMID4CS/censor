@@ -1,4 +1,4 @@
-def de_embed_text(sentence_embedding_seq)-> str:
+def de_embed_text(sentence_embedding_seq, bert_embedding=None)-> str:
     """ 
     Convert the text embedding back to text
     Finds the closest text to the embedding by comparing it with the BERT vocabulary.
@@ -11,10 +11,8 @@ def de_embed_text(sentence_embedding_seq)-> str:
     import torch
     import torch.nn.functional as F
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertModel.from_pretrained('bert-base-uncased').to(sentence_embedding_seq.device)
+    embedding_matrix = bert_embedding.word_embeddings.weight.to(sentence_embedding_seq.device)  # Shape: [Vocab_size, Embedding_dim]
 
-    embedding_matrix = model.embeddings.word_embeddings.weight  # Shape: [Vocab_size, Embedding_dim]
 
     # Normalize for cosine similarity
     normalized_matrix = F.normalize(embedding_matrix, dim=1)
