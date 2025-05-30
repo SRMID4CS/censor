@@ -154,7 +154,14 @@ if __name__ == "__main__":
     model, model_seed = inversefed.construct_model(config['model'], num_classes=nclass_dict[config['dataset']], num_channels=3, seed=set_seed, args=args)
     model.to(**setup)
 
-    bert_embedding = model.embeddings[0] if hasattr(model, 'embeddings') else None
+    bert_embedding = None
+    if hasattr(model, 'embeddings'):
+        for emb in model.embeddings:
+            # Find the text embedding module
+            if hasattr(emb, 'text_embeddings'):
+                bert_embedding = emb.text_embeddings
+                break
+
     if bert_embedding is not None:
         logger.info("BERT model loaded for text embedding: {}".format(bert_embedding))
     else:
@@ -612,4 +619,4 @@ if __name__ == "__main__":
     logger.info(f'Finished computations with time: {str(datetime.timedelta(seconds=time.time() - start_time))}')
     logger.info("output_dir: {}".format(save_dir))
     logger.info('-------------Job finished.-------------------------')
-    
+
