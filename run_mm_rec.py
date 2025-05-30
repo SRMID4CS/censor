@@ -172,8 +172,8 @@ if __name__ == "__main__":
         'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'
     )
 
-    config['cls_token_embedding'] = bert_embedding(bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.cls_token))
-    config['pad_token_embedding'] = bert_embedding(bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.pad_token))
+    config['cls_token_embedding'] = bert_embedding([bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.cls_token)])
+    config['pad_token_embedding'] = bert_embedding([bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.pad_token)])
 
     if config['dataset'].startswith('FFHQ') or config['dataset'].endswith('FFHQ'):
         dm = torch.as_tensor(getattr(inversefed.consts, f'cifar10_mean'), **setup)[:, None, None]
