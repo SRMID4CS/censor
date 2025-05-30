@@ -1280,7 +1280,10 @@ class GradientReconstructor():
                 loss = self.loss_fn(*self.model([batch_input, batch_label], feat_out=True), batch_label)
             else:
                 loss = self.loss_fn(self.model(batch_input), batch_label)
-            gradient = torch.autograd.grad(loss, self.model.parameters(), create_graph=False)
+            gradient = torch.autograd.grad(loss, self.model.parameters(), create_graph=False, allow_unused=True)
+            # Fix to allow unused since the attack bypasses the BERT model,
+            # only the positional and type encodings are used and doesn't participate in the loss
+            gradient = [g if g is not None else torch.zeros_like(p) for g, p in zip(gradient, self.model.parameters())]
             gradient = [grad for grad in gradient]
             #apply defense
             if self.config['defense_method'] is not None:
