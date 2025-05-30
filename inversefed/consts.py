@@ -38,5 +38,5 @@ coco_std = [0.229, 0.224, 0.225]
 coco_img_mean = [0.485, 0.456, 0.406]
 coco_img_std = [0.229, 0.224, 0.225]
 
-coco_txt_mean = [0.485, 0.456, 0.406]
-coco_txt_std = [0.229, 0.224, 0.225]
+coco_txt_mean = [0]
+coco_txt_std = [1]
