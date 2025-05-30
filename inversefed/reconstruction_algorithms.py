@@ -1153,7 +1153,7 @@ class GradientReconstructor():
         elif init_txt == 'zeros':
             return torch.zeros(shape, **self.setup)
         elif init_txt == 'smart':
-            embed = torch.zeros(shape, **self.setup)
+            embed = torch.randn(shape, **self.setup)
             # first token is always [CLS]
             cls_token_embedding = self.config['cls_token_embedding'].detach().clone()
             cls_token_embedding = cls_token_embedding.unsqueeze(0).unsqueeze(0).detach().clone().repeat(shape[0], shape[1], 1, 1)
