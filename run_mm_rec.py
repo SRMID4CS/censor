@@ -534,7 +534,7 @@ if __name__ == "__main__":
                         for j in range(config['num_images']):
                             sentence_embedding_seq = output_den[j:j + 1, ...]
                             # convert to text
-                            sentence = de_embed_text(sentence_embedding_seq, bert_embedding=bert_embedding)
+                            sentence = de_embed_text(sentence_embedding_seq, bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
                             with open(os.path.join(ouput_dir, f'{tid_list[j]}_gen.txt'), 'w') as f:
                                 f.write(sentence)
 

@@ -1,4 +1,4 @@
-def de_embed_text(sentence_embedding_seq, bert_embedding=None)-> str:
+def de_embed_text(sentence_embedding_seq, bert_embedding=None, tokenizer=None)-> str:
     """ 
     Convert the text embedding back to text
     Finds the closest text to the embedding by comparing it with the BERT vocabulary.
@@ -7,7 +7,6 @@ def de_embed_text(sentence_embedding_seq, bert_embedding=None)-> str:
     Returns:
         str: The approximate text.
     """
-    from transformers import BertTokenizer, BertModel
     import torch
     import torch.nn.functional as F
 
