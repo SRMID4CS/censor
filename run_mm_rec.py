@@ -159,7 +159,7 @@ if __name__ == "__main__":
         for emb in model.embeddings:
             # Find the text embedding module
             if hasattr(emb, 'text_embeddings'):
-                bert_embedding = emb.text_embeddings
+                bert_embedding = copy.deepcopy(emb.text_embeddings)
                 break
 
     if bert_embedding is not None:
@@ -171,6 +171,10 @@ if __name__ == "__main__":
     bert_tokenizer = BertTokenizer.from_pretrained(
         'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'
     )
+
+    config['cls_token_embedding'] = bert_embedding(bert_tokenizer.cls_token)
+    config['pad_token_embedding'] = bert_embedding(bert_tokenizer.pad_token)
+
     if config['dataset'].startswith('FFHQ') or config['dataset'].endswith('FFHQ'):
         dm = torch.as_tensor(getattr(inversefed.consts, f'cifar10_mean'), **setup)[:, None, None]
         ds = torch.as_tensor(getattr(inversefed.consts, f'cifar10_std'), **setup)[:, None, None]

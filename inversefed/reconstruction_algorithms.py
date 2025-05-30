@@ -1141,16 +1141,28 @@ class GradientReconstructor():
             List[Tensor]: List of shape (restarts, num_images, seq_len, embed_dim)
         """
         shape = (self.config['restarts'], self.num_images, 40, 384)  # shape is (seq_len, embed_dim)
+        init_txt = self.config.get('init_text', self.config['init'])
 
         if self.text_embeds is not None:
             # Reuse old data if present, resized if needed
             return [text.detach().clone().to(self.device) for text in self.text_embeds]
-        elif self.config['init'] == 'randn':
+        elif init_txt == 'randn':
             return torch.randn(shape, **self.setup)
-        elif self.config['init'] == 'rand':
+        elif init_txt == 'rand':
             return (torch.rand(shape, **self.setup) - 0.5) * 2
-        elif self.config['init'] == 'zeros':
+        elif init_txt == 'zeros':
             return torch.zeros(shape, **self.setup)
+        elif init_txt == 'smart':
+            embed = torch.zeros(shape, **self.setup)
+            # first token is always [CLS]
+            cls_token_embedding = self.config['cls_token_embedding'].detach().clone()
+            embed[:, :, 0, :] = cls_token_embedding
+            # last 1/2 of tokens are [PAD]
+            pad_token_embedding = self.config['pad_token_embedding'].detach().clone()
+            half = shape[2] // 2
+            embed[:, :, half:, :] = pad_token_embedding
+            embed = embed.to(self.device)
+            return embed
         else:
             raise ValueError(f"Unknown init type: {self.config['init']}")
 
