@@ -562,7 +562,7 @@ if __name__ == "__main__":
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
                 elif config['model'] == 'FedCola_TXT':
                     # Save the text after deembedding
-                    sentence_token_ids = ground_truth_den[j:j + 1, ...]
+                    sentence_token_ids = ground_truth[j:j + 1, ...]
                     # convert to text
                     sentence = bert_tokenizer.convert_ids_to_tokens(sentence_token_ids.squeeze().tolist())
                     print("Ground truth tokens:", sentence)
