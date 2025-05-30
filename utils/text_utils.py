@@ -12,8 +12,8 @@ def de_embed_text(sentence_embedding_seq)-> str:
     import torch.nn.functional as F
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertModel.from_pretrained('bert-base-uncased')
-    
+    model = BertModel.from_pretrained('bert-base-uncased').to(sentence_embedding_seq.device)
+
     embedding_matrix = model.embeddings.word_embeddings.weight  # Shape: [Vocab_size, Embedding_dim]
 
     # Normalize for cosine similarity
