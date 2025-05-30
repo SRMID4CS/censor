@@ -21,7 +21,7 @@
   
   bn_stat : 0       #choose if we use bn statistic to regularizer 
 
-  max_iterations : 100    #Maximum number of iterations for reconstruction.
+  max_iterations : 5000    #Maximum number of iterations for reconstruction.
 
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
 
@@ -39,7 +39,7 @@
   geiping : true
   yin : false
 
-  train_epochs: 3
+  train_epochs: 10
   our_num_tries : 10
   #Defense parameter
   defense_method : None
