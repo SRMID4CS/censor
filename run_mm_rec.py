@@ -591,6 +591,10 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             inputs = inputs.to(**setup)
             targets = targets.to(**setup)
+            if config['model'] == 'FedCola_TXT':
+                inputs = inputs.long()
+            if config['model'] == 'FedCola_IMG_TXT':
+                targets = targets.long()
             targets = targets.long()
             if 'FedCola' in config['model']:
                 if config['model'] == 'FedCola_IMG_TXT':
