@@ -277,8 +277,11 @@ if __name__ == "__main__":
                 G, _ = pickle.load(f)
                 G = G.requires_grad_(True).to(setup['device'])
 
+        config_to_save = dict(config)  # Make a shallow copy
+        config_to_save.pop('cls_token_embedding', None)
+        config_to_save.pop('pad_token_embedding', None)
         #Save the config file first
-        inversefed.utils.save_to_table(os.path.join(config['output_dir'], config['exp_name']), name='configs', dryrun=args.dryrun, **config)
+        inversefed.utils.save_to_table(os.path.join(config['output_dir'], config['exp_name']), name='configs', dryrun=args.dryrun, **config_to_save)
         target_id = config['target_id']
         target_id_increment = config['target_id_increment']
         iter_dryrun = False
