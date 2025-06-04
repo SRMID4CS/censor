@@ -1215,7 +1215,7 @@ class GradientReconstructor():
                 elif self.config['model'] == "FedCola_TXT":
                     loss = self.loss_fn(self.model([None, batch_input])[1], batch_label)
                 elif self.config['model'] == "FedCola_IMG_TXT":
-                    loss = self.loss_fn(*self.model([batch_input, batch_label], feat_out=True))
+                    loss = self.loss_fn(*self.model([batch_input, batch_label], feat_out=True), torch.tensor([1.0]).to(self.device))
                 else:
                     loss = self.loss_fn(self.model(batch_input), batch_label)
                 # Fix to allow unused since the attack bypasses the BERT model, 
@@ -1300,7 +1300,7 @@ class GradientReconstructor():
             elif self.config['model'] == "FedCola_TXT":
                 loss = self.loss_fn(self.model([None, batch_input])[1], batch_label)
             elif self.config['model'] == "FedCola_IMG_TXT":
-                loss = self.loss_fn(*self.model([batch_input, batch_label], feat_out=True), batch_label)
+                loss = self.loss_fn(*self.model([batch_input, batch_label], feat_out=True), torch.tensor([1.0]).to(self.device))
             else:
                 loss = self.loss_fn(self.model(batch_input), batch_label)
             gradient = torch.autograd.grad(loss, self.model.parameters(), create_graph=False, allow_unused=True)
@@ -1466,7 +1466,10 @@ def loss_steps(model, inputs, labels, loss_fn=torch.nn.CrossEntropyLoss(), lr=1e
             else:
                 outputs = patched_model(inputs, patched_model.parameters)
             labels_ = labels
-        loss = loss_fn(outputs, labels_).sum()
+        if config['model'] == 'FedCola_IMG_TXT':
+            loss = loss_fn(*outputs, torch.tensor([1.0]).to(outputs[0].device)).sum()
+        else:
+            loss = loss_fn(outputs, labels_).sum()
         grad = torch.autograd.grad(loss, patched_model.parameters.values(),
                                    retain_graph=True, create_graph=True, only_inputs=True)
 
