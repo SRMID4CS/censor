@@ -425,6 +425,7 @@ class GradientReconstructor():
             infer_labels = torch.stack(infer_labels)            
             logger.info("Infer labels in correct order:{}".format(infer_labels))
         else:
+            infer_labels = None
             logger.info("Label inference skipped since contrastive loss is used.")
             
             
