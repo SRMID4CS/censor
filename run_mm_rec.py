@@ -304,11 +304,14 @@ if __name__ == "__main__":
 
             if config['num_images'] == 1:
                 ground_truth, labels = validloader.dataset[target_id]
-                ground_truth, labels = ground_truth.unsqueeze(0).to(**setup), torch.as_tensor((labels,), device=setup['device'])
+                ground_truth = ground_truth.unsqueeze(0).to(**setup)
                 if config['model'] == 'FedCola_TXT':
                     ground_truth = ground_truth.long()
                 if config['model'] == 'FedCola_IMG_TXT':
+                    labels = labels.unsqueeze(0).to(**setup)
                     labels = labels.long()
+                else:
+                    labels =  torch.as_tensor((labels,), device=setup['device'])
                 target_id_ = target_id + 1
                 logger.info(f"loaded img {target_id_ - 1}")
                 tid_list.append(target_id_ - 1)
