@@ -498,10 +498,10 @@ class GradientReconstructor():
             if self.config['model'] == 'FedCola_IMG':
                 self.images = self._init_images(img_shape)
             elif self.config['model'] == 'FedCola_TXT':
-                self.text_embeds = self._init_text_embeds(img_shape)
+                self.text_embeds = self._init_text_embeds(txt_shape)
             elif self.config['model'] == 'FedCola_IMG_TXT':
                 self.images = self._init_images(img_shape)
-                self.text_embeds = self._init_text_embeds((labels.shape[-2], labels.shape[-1]))
+                self.text_embeds = self._init_text_embeds(txt_shape)
             else:
                 self.images = self._init_images(img_shape)
             if self.config['yin']:
@@ -830,7 +830,7 @@ class GradientReconstructor():
             logger.info('Choosing optimal x...')
             return None, scores[optimal_index].item(), x[trial].clone(), None
 
-    def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500):
+    def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500, txt_shape=(40,384)):
         self.model.eval()
 
 
@@ -838,11 +838,11 @@ class GradientReconstructor():
         if self.config['model'] == 'FedCola_IMG':
             x = self._init_images(img_shape)
         elif self.config['model'] == 'FedCola_TXT':
-            x = self._init_text_embeds(img_shape)
+            x = self._init_text_embeds(txt_shape)
         elif self.config['model'] == 'FedCola_IMG_TXT':
             x = self._init_images(img_shape)
             # TODO Check
-            labels = self._init_text_embeds((labels.shape[-2], labels.shape[-1]))
+            labels = self._init_text_embeds(txt_shape)
         else:
             x = self._init_images(img_shape)
         # scores = torch.zeros(self.config['restarts'])
