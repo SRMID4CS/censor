@@ -368,7 +368,7 @@ if __name__ == "__main__":
                 else:
                     outputs_for_rec = model(ground_truth)
                 if config['model'] == 'FedCola_IMG_TXT':
-                    target_loss = loss_fn(outputs_for_rec)
+                    target_loss = loss_fn(*outputs_for_rec)
                 else:
                     target_loss, _, _ = loss_fn(outputs_for_rec, labels)
                 input_gradient = torch.autograd.grad(target_loss, model.parameters())
