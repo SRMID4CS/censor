@@ -400,26 +400,33 @@ class GradientReconstructor():
 
     def reconstruct(self, input_data, labels, img_shape=(3, 32, 32), dryrun=False, tol=None):
         """Reconstruct image from gradient."""
-        # if labels is None:
         if torch.is_tensor(input_data[0]):  
-            labels_tmp = self.infer_label(input_data, num_inputs=self.num_images)
             self.input_data = [input_data]
         else:   # mutiple gradients
-            labels_tmp = [self.infer_label(grad, num_inputs=self.num_images // len(input_data)) for grad in input_data]  
-            labels_tmp = torch.stack(labels_tmp).squeeze()
             self.input_data = input_data
-        self.reconstruct_label = False
-        logger.info("Infer labels:{}".format(labels_tmp))
-        infer_labels = [-1 for i in range(len(labels_tmp))]
-        # adjust the order of labels
-        for idx, label in enumerate(labels_tmp):
-            if label in labels:
-                infer_labels[torch.nonzero(labels == label).squeeze()] = labels_tmp[idx].clone()
-        for idx, label in enumerate(labels_tmp):
-            if label not in labels:
-                infer_labels[infer_labels.index(-1)] = labels_tmp[idx].clone()
-        infer_labels = torch.stack(infer_labels)            
-        logger.info("Infer labels in correct order:{}".format(infer_labels))
+
+        if self.config['model'] != 'FedCola_IMG_TXT':
+            # if labels is None:
+            if torch.is_tensor(input_data[0]):  
+                labels_tmp = self.infer_label(input_data, num_inputs=self.num_images)
+            else:   # mutiple gradients
+                labels_tmp = [self.infer_label(grad, num_inputs=self.num_images // len(input_data)) for grad in input_data]  
+                labels_tmp = torch.stack(labels_tmp).squeeze()
+            self.reconstruct_label = False
+            logger.info("Infer labels:{}".format(labels_tmp))
+            infer_labels = [-1 for i in range(len(labels_tmp))]
+            # adjust the order of labels
+            for idx, label in enumerate(labels_tmp):
+                if label in labels:
+                    infer_labels[torch.nonzero(labels == label).squeeze()] = labels_tmp[idx].clone()
+            for idx, label in enumerate(labels_tmp):
+                if label not in labels:
+                    infer_labels[infer_labels.index(-1)] = labels_tmp[idx].clone()
+            infer_labels = torch.stack(infer_labels)            
+            logger.info("Infer labels in correct order:{}".format(infer_labels))
+        else:
+            logger.info("Label inference skipped since contrastive loss is used.")
+            
             
         self.image_size = img_shape[1]
         start_time = time.time()
