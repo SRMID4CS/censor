@@ -503,6 +503,7 @@ class GradientReconstructor():
             elif self.config['model'] == 'FedCola_IMG_TXT':
                 self.images = self._init_images(img_shape)
                 self.text_embeds = self._init_text_embeds(txt_shape)
+                infer_labels = self._init_text_embeds(txt_shape)
             else:
                 self.images = self._init_images(img_shape)
             if self.config['yin']:
