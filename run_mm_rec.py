@@ -632,7 +632,10 @@ if __name__ == "__main__":
                     outputs = model([None, inputs])[1]
             else:
                 outputs = model(inputs)
-            loss, _, _ = loss_fn(outputs, targets)
+            if config['model'] == 'FedCola_IMG_TXT':
+                loss = loss_fn(*outputs)
+            else:
+                loss, _, _ = loss_fn(outputs, targets)
             loss.backward()
             optimizer.step()
             logger.info(f"loss: {loss.item()} at epoch {epoch} batch {i}")
