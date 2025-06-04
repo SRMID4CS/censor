@@ -425,8 +425,15 @@ if __name__ == "__main__":
 
                 if G is None:
                     G = rec_machine.G
-                logger.info("Real labels:{}".format(labels))
-                result = rec_machine.reconstruct(input_gradient, labels, img_shape=input_shape, dryrun=iter_dryrun)
+
+                if config['model'] == 'FedCola_IMG_TXT':
+                    labels_to_support = None
+                    logger.info("Reconstructing FedCola_IMG_TXT : Labels set to None")
+                else:
+                    labels_to_support = labels
+                    logger.info("Real labels:{}".format(labels))
+
+                result = rec_machine.reconstruct(input_gradient, labels_to_support, img_shape=input_shape, dryrun=iter_dryrun)
                 if iter_dryrun:
                     continue
             else:
@@ -450,7 +457,15 @@ if __name__ == "__main__":
                         G = rec_machine.G_synthesis
                     else:
                         G = rec_machine.G
-                result = rec_machine.reconstruct(input_parameters, labels, img_shape=input_shape, dryrun=args.dryrun)
+                
+                if config['model'] == 'FedCola_IMG_TXT':
+                    labels_to_support = None
+                    logger.info("Reconstructing FedCola_IMG_TXT : Labels set to None")
+                else:
+                    labels_to_support = labels
+                    logger.info("Real labels:{}".format(labels))
+
+                result = rec_machine.reconstruct(input_parameters, labels_to_support, img_shape=input_shape, dryrun=args.dryrun)
 
             #lpips
             lpips_loss = lpips.LPIPS(net='vgg', spatial=False).to(**setup)
