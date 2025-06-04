@@ -7,6 +7,7 @@ import torchvision
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
 from torchmultimodal.modules.losses.contrastive_loss_with_temperature import ContrastiveLossWithTemperature
+torch.nn.ContrastiveLoss = ContrastiveLossWithTemperature
 
 import os
 
@@ -94,7 +95,7 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
             loss_fn = Classification()
         else:
             modality = 'img+txt'
-            loss_fn = ContrastiveLossWithTemperature()
+            loss_fn = torch.nn.functional.cosine_embedding_loss # torch.nn.ContrastiveLoss()
         
         tokenizer = BertTokenizer.from_pretrained(
             'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'

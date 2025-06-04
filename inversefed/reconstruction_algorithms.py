@@ -179,7 +179,7 @@ class GradientReconstructor():
         self.group_mean = None
 
         if self.config['model'] == 'FedCola_IMG_TXT':
-            self.loss_fn = torch.nn.ContrastiveLoss()
+            self.loss_fn = torch.nn.functional.cosine_embedding_loss # torch.nn.ContrastiveLoss()
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
         self.noises = [None for i in range(self.config['restarts'])]
