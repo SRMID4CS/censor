@@ -505,7 +505,9 @@ if __name__ == "__main__":
                     if 'FedCola' in config['model']:
                         if config['model'] == 'FedCola_IMG_TXT':
                             reconstructed_output_feat = model([output, labels], feat_out=True)
+                            reconstructed_output_feat = reconstructed_output_feat[0] # TEMP TODO fix for text
                             reconstructed_ground_truth_feat = model([ground_truth, labels], feat_out=True)
+                            reconstructed_ground_truth_feat = reconstructed_ground_truth_feat[0] # TEMP TODO fix for text
                         elif config['model'] == 'FedCola_IMG':
                             reconstructed_output_feat = model([output,None])[0]
                             reconstructed_ground_truth_feat = model([ground_truth,None])[0]
