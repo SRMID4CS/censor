@@ -521,10 +521,10 @@ class GradientReconstructor():
                 self.config['image_norm'] = -1
                 self.config['group_lazy'] = -1
                 _x = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations)
-                _, best_score, x_best, _ = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
+                _, best_score, x_best, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
                 stats_gp = {}
                 stats_gp['opt'] = best_score
-                ans.append(['geiping'] + [x_best, stats_gp])
+                ans.append(['geiping'] + [x_best, stats_gp, label_best])
 
         logger.info(f'Total time: {time.time()-start_time}.')
         return ans

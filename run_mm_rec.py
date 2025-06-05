@@ -478,6 +478,7 @@ if __name__ == "__main__":
                 file_name = item[0]
                 output = item[1]
                 stats = item[2]
+                label_best = item[3]
 
                 if file_name == "Best_layer_num":
                     Best_layer_num = int(output) 
@@ -554,23 +555,20 @@ if __name__ == "__main__":
 
                 # Save the resulting image
                 if args.save_image and output is not None:
-                    if config['model'] == 'FedCola_IMG':
+                    if config['model'] == 'FedCola_IMG' or config['model'] == 'FedCola_IMG_TXT':
                         # Same as Default - Save the image
                         for j in range(config['num_images']):
                             torchvision.utils.save_image(output_den[j:j + 1, ...], os.path.join(ouput_dir, f'{tid_list[j]}_gen.png'))
-                    elif config['model'] == 'FedCola_TXT':
+
+                    if config['model'] == 'FedCola_TXT' or config['model'] == 'FedCola_IMG_TXT':
                         # Save the text after deembedding
                         for j in range(config['num_images']):
-                            sentence_embedding_seq = output_den[j:j + 1, ...]
+                            sentence_embedding_seq = output_den[j:j + 1, ...] if config['model'] == 'FedCola_TXT' else label_best[j:j + 1, ...]
                             # convert to text
                             sentence = de_embed_text(sentence_embedding_seq[0], bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
                             with open(os.path.join(ouput_dir, f'{tid_list[j]}_gen.txt'), 'w') as f:
                                 f.write(sentence)
 
-                    elif config['model'] == 'FedCola_IMG_TXT':
-                        # Save both image and text
-                        for j in range(config['num_images']):
-                            torchvision.utils.save_image(output_den[j:j + 1, ...], os.path.join(ouput_dir, f'{tid_list[j]}_gen.png'))
                     else:
                         # Default - Save the image
                         for j in range(config['num_images']):
@@ -587,11 +585,12 @@ if __name__ == "__main__":
 
             for j in range(config['num_images']):
                 # TODO Save the ground truth txt
-                if config['model'] == 'FedCola_IMG':
+                if config['model'] == 'FedCola_IMG' or config['model'] == 'FedCola_IMG_TXT':
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
-                elif config['model'] == 'FedCola_TXT':
+
+                if config['model'] == 'FedCola_TXT' or config['model'] == 'FedCola_IMG_TXT':
                     # Save the text after deembedding
-                    sentence_token_ids = ground_truth[j:j + 1, ...]
+                    sentence_token_ids = ground_truth[j:j + 1, ...] if config['model'] == 'FedCola_TXT' else labels[j:j + 1, ...]
                     # convert to text
                     sentence = bert_tokenizer.convert_ids_to_tokens(sentence_token_ids.squeeze().tolist())
                     print("Ground truth tokens:", sentence)
@@ -599,6 +598,8 @@ if __name__ == "__main__":
                     print("Ground truth sentence:", sentence)
                     with open(os.path.join(save_dir, f'{tid_list[j]}_gt.txt'), 'w') as f:
                         f.write(sentence)
+                else:
+                    torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
             #one row represents psnrs of a batch
         
         learning_rate = 0.001
