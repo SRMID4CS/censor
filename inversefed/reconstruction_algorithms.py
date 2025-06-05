@@ -1154,7 +1154,7 @@ class GradientReconstructor():
 
         if self.text_embeds is not None:
             # Reuse old data if present, resized if needed
-            return [text.detach().clone().to(self.device) for text in self.text_embeds]
+            return self.text_embeds.detach().clone().to(self.device)
         elif init_txt == 'randn':
             return torch.randn(shape, **self.setup)
         elif init_txt == 'rand':
