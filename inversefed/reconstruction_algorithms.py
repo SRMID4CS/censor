@@ -801,10 +801,18 @@ class GradientReconstructor():
         restarts = self.config['restarts']
         scores = torch.zeros(restarts)
         x = [None for i in range(restarts)]
+        if self.config['model'] == 'FedCola_IMG_TXT':
+            _labels = [None for i in range(restarts)]
+        else:
+            _labels = labels
         # logger.info(f"choose_optimal label type:{type(labels)}")
         for trial in range(restarts):
             x[trial] = _x[trial].detach()
-            scores[trial] = self._score_trial(x[trial], self.input_data, labels)
+            if self.config['model'] == 'FedCola_IMG_TXT':
+                _labels[trial] = labels[trial].detach()
+                scores[trial] = self._score_trial(x[trial], self.input_data, _labels[trial])
+            else:
+                scores[trial] = self._score_trial(x[trial], self.input_data, labels)
             if tol is not None and scores[trial] <= tol:
                 break
             if dryrun:
@@ -1281,10 +1289,8 @@ class GradientReconstructor():
 
     def _score_trial(self, x_trial, input_gradient, label):
         # logger.info(f"score_trial label type:{type(label)}")
-        if type(label) == list:
-            num_images = len(label[0])
-        else:
-            num_images = label.shape[0]
+        num_images = label.shape[0]
+
         num_gradients = len(input_gradient)
         batch_size = num_images // num_gradients
         num_batch = num_images // batch_size
