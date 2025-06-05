@@ -825,6 +825,7 @@ class GradientReconstructor():
         best_index_in_valid = torch.argmin(valid_scores)
         optimal_index = valid_indices[best_index_in_valid]
 
+        logger.info(f'Score: {scores}')
         logger.info(f'Optimal result score: {scores[optimal_index]:2.4f}')
 
 
