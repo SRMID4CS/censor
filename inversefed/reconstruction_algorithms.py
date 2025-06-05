@@ -803,8 +803,6 @@ class GradientReconstructor():
         x = [None for i in range(restarts)]
         if self.config['model'] == 'FedCola_IMG_TXT':
             _labels = [None for i in range(restarts)]
-        else:
-            _labels = labels
         # logger.info(f"choose_optimal label type:{type(labels)}")
         for trial in range(restarts):
             x[trial] = _x[trial].detach()
@@ -817,28 +815,36 @@ class GradientReconstructor():
                 break
             if dryrun:
                 break
-        scores = scores[torch.isfinite(scores)]  # guard against NaN/-Inf scores?
-        optimal_index = torch.argmin(scores)
+
+        valid_mask = torch.isfinite(scores)
+        if not torch.any(valid_mask):
+            raise ValueError("All scores are invalid (NaN or Inf)")
+
+        valid_scores = scores[valid_mask] # guard against NaN/-Inf scores?
+        valid_indices = torch.arange(len(scores))[valid_mask]
+        best_index_in_valid = torch.argmin(valid_scores)
+        optimal_index = valid_indices[best_index_in_valid]
+
         logger.info(f'Optimal result score: {scores[optimal_index]:2.4f}')
 
 
         if G:   #For GIAS
             logger.info('Choosing optimal G...')
-            return  G[optimal_index], scores[optimal_index].item(), x[trial].clone(), None
+            return  G[optimal_index], scores[optimal_index].item(), x[optimal_index].clone(), None
         
         
         if self.generative_model_name in ['stylegan2_io']:
             logger.info('Choosing optimal z and noise...')
-            return dummy_z[optimal_index].detach().clone(), scores[optimal_index].item(), x[trial].clone(), self.noises[optimal_index]
+            return dummy_z[optimal_index].detach().clone(), scores[optimal_index].item(), x[optimal_index].clone(), self.noises[optimal_index]
         elif self.generative_model_name in ['BigGAN']:
             logger.info('Choosing optimal z and ys...')
-            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[trial].clone(), self.ys[optimal_index]
+            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), self.ys[optimal_index]
         elif self.generative_model_name:
             logger.info('Choosing optimal z...')
-            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[trial].clone(), None
+            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), None
         else:
             logger.info('Choosing optimal x...')
-            return None, scores[optimal_index].item(), x[trial].clone(), None
+            return None, scores[optimal_index].item(), x[optimal_index].clone(), _labels[optimal_index].clone()
 
     def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500, txt_shape=(40,384)):
         self.model.eval()
