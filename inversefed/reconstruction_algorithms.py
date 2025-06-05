@@ -1154,7 +1154,7 @@ class GradientReconstructor():
 
         if self.text_embeds is not None:
             # Reuse old data if present, resized if needed
-            return self.text_embeds.detach().clone().to(self.device)
+            return [text.detach().clone().to(self.device) for text in self.text_embeds]
         elif init_txt == 'randn':
             return torch.randn(shape, **self.setup)
         elif init_txt == 'rand':
@@ -1281,7 +1281,10 @@ class GradientReconstructor():
 
     def _score_trial(self, x_trial, input_gradient, label):
         # logger.info(f"score_trial label type:{type(label)}")
-        num_images = label.shape[0]
+        if type(label) == list:
+            num_images = len(label[0])
+        else:
+            num_images = label.shape[0]
         num_gradients = len(input_gradient)
         batch_size = num_images // num_gradients
         num_batch = num_images // batch_size
