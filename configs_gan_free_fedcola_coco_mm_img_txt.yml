@@ -15,13 +15,13 @@
   target_id : 10 # the target image id + iterative incrementation of id
   target_id_increment : 1 # the incrementation of target image id
   lr : 0.1            #learning rate for Yin et al.
-  total_variation : -1     #the coefficient of total variation 
+  total_variation : 0.0001     #the coefficient of total variation 
   image_norm : 0.000001    #the coefficient of norm regularizer for Yin et al.
   group_lazy : 0.01    #choose if we use group lazy regularization for Yin et al.
   
   bn_stat : 0       #choose if we use bn statistic to regularizer 
 
-  max_iterations : 100    #Maximum number of iterations for reconstruction.
+  max_iterations : 24000    #Maximum number of iterations for reconstruction.
 
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
 
@@ -39,7 +39,7 @@
   geiping : true
   yin : false
 
-  train_epochs: 3
+  train_epochs: 10
   our_num_tries : 10
   #Defense parameter
   defense_method : None
