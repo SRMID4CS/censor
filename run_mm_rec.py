@@ -174,8 +174,13 @@ if __name__ == "__main__":
         'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'
     )
 
-    config['cls_token_embedding'] = bert_embedding(torch.tensor([[bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.cls_token)]], device=setup['device']))[0]
-    config['pad_token_embedding'] = bert_embedding(torch.tensor([[bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.pad_token)]], device=setup['device']))[0]
+    data_holder = DataHolder()
+
+    cls_token_embedding = bert_embedding(torch.tensor([[bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.cls_token)]], device=setup['device']))[0]
+    pad_token_embedding = bert_embedding(torch.tensor([[bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.pad_token)]], device=setup['device']))[0]
+
+    data_holder.set('cls_token_embedding', cls_token_embedding)
+    data_holder.set('pad_token_embedding', pad_token_embedding)
 
     if config['dataset'].startswith('FFHQ') or config['dataset'].endswith('FFHQ'):
         dm = torch.as_tensor(getattr(inversefed.consts, f'cifar10_mean'), **setup)[:, None, None]
@@ -190,7 +195,6 @@ if __name__ == "__main__":
                                     weight_decay=defs.weight_decay)
     logger.info(f"Optimizer: {optimizer}")
 
-    data_holder = DataHolder()
     
     
     # train the model and save the model checkpoint at each epoch

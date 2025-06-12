@@ -1170,6 +1170,8 @@ class GradientReconstructor():
         shape = (self.config['restarts'], self.num_images, 40, 384)  # shape is (seq_len, embed_dim)
         init_txt = self.config.get('init_text', self.config['init'])
 
+        data_holder = DataHolder()
+
         if self.text_embeds is not None:
             # Reuse old data if present, resized if needed
             return [text.detach().clone().to(self.device) for text in self.text_embeds]
@@ -1182,11 +1184,11 @@ class GradientReconstructor():
         elif init_txt == 'smart':
             embed = torch.randn(shape, **self.setup)
             # first token is always [CLS]
-            cls_token_embedding = self.config['cls_token_embedding'].detach().clone()
+            cls_token_embedding = data_holder.get('cls_token_embedding').detach().clone()
             cls_token_embedding = cls_token_embedding.unsqueeze(0).unsqueeze(0).detach().clone().repeat(shape[0], shape[1], 1, 1)
             embed[:, :, 0, :] = cls_token_embedding
             # last 1/2 of tokens are [PAD]
-            pad_token_embedding = self.config['pad_token_embedding'].detach().clone()
+            pad_token_embedding = data_holder.get('pad_token_embedding').detach().clone()
             pad_token_embedding = pad_token_embedding.unsqueeze(0).unsqueeze(0).detach().clone().repeat(shape[0], shape[1], 1, 1)
             half = shape[2] // 2
             embed[:, :, half:, :] = pad_token_embedding
@@ -1195,7 +1197,6 @@ class GradientReconstructor():
         elif init_txt == 'ground_truth':
             # provide ground truth text for mm reconstruction 
             # to see impact of perfect text reconstruction
-            data_holder = DataHolder()
             return data_holder.get('ground_truth_text')
         else:
             raise ValueError(f"Unknown init type: {self.config['init']}")
