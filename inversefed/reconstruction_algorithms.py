@@ -1197,7 +1197,10 @@ class GradientReconstructor():
         elif init_txt == 'ground_truth':
             # provide ground truth text for mm reconstruction 
             # to see impact of perfect text reconstruction
-            return data_holder.get('ground_truth_text')
+            gt = data_holder.get('ground_truth_text')
+            # correct gt list of len (num_images) [(seq_len, embed_dim)] to (restarts, num_images, seq_len, embed_dim)
+            gt_corrected = [torch.stack([gt[i].detach().clone().to(self.device) for i in range(len(gt))]) for j in range(self.config['restarts'])]
+            return gt_corrected
         else:
             raise ValueError(f"Unknown init type: {self.config['init']}")
 

@@ -575,7 +575,7 @@ if __name__ == "__main__":
                         for j in range(config['num_images']):
                             torchvision.utils.save_image(output_den[j:j + 1, ...], os.path.join(ouput_dir, f'{tid_list[j]}_gen.png'))
 
-                    if config['model'] == 'FedCola_TXT' or config['model'] == 'FedCola_IMG_TXT':
+                    if config['model'] == 'FedCola_TXT' or (config['model'] == 'FedCola_IMG_TXT' and config['init_text'] != 'ground_truth'):
                         # Save the text after deembedding
                         for j in range(config['num_images']):
                             sentence_embedding_seq = output_den[j:j + 1, ...] if config['model'] == 'FedCola_TXT' else label_best[j:j + 1, ...]
