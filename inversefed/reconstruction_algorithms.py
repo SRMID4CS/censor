@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 # from torch.nn.parallel import DistributedDataParallel as DDP
 from torchmultimodal.modules.losses.contrastive_loss_with_temperature import ContrastiveLossWithTemperature
+from utils.data_holder import DataHolder
 torch.nn.ContrastiveLoss = ContrastiveLossWithTemperature
 
 from collections import defaultdict, OrderedDict
@@ -893,7 +894,8 @@ class GradientReconstructor():
                 else:
                     #Make labels and x trainable conditionally
                     _x[trial].requires_grad = True
-                    if self.config['model'] == 'FedCola_IMG_TXT':
+                    init_txt = self.config.get('init_text', self.config['init'])
+                    if self.config['model'] == 'FedCola_IMG_TXT' and init_txt != 'ground_truth':
                         _labels[trial].requires_grad = True
                         to_optimize = [_x[trial], _labels[trial]]
                     else:
@@ -1189,6 +1191,11 @@ class GradientReconstructor():
             embed[:, :, half:, :] = pad_token_embedding
             embed = embed.to(self.device)
             return embed
+        elif init_txt == 'ground_truth':
+            # provide ground truth text for mm reconstruction 
+            # to see impact of perfect text reconstruction
+            data_holder = DataHolder()
+            return data_holder.get('ground_truth_text')
         else:
             raise ValueError(f"Unknown init type: {self.config['init']}")
 

@@ -4,6 +4,8 @@ Optional arguments can be found in inversefed/options.py
 This CLI can recover the baseline experiments.
 """
 import os
+
+from utils.data_holder import DataHolder
 #limit the visual gpus
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -187,6 +189,9 @@ if __name__ == "__main__":
     optimizer = torch.optim.SGD(model.parameters(), lr=defs.lr, momentum=0.9,
                                     weight_decay=defs.weight_decay)
     logger.info(f"Optimizer: {optimizer}")
+
+    data_holder = DataHolder()
+    
     
     # train the model and save the model checkpoint at each epoch
     for epoch in range(config['train_epochs']):
@@ -354,6 +359,11 @@ if __name__ == "__main__":
                 for module in model.modules():
                     if isinstance(module, nn.BatchNorm2d):
                         bn_layers.append(inversefed.BNStatisticsHook(module))
+
+            # store ground truth text to be used in mm reconstruction
+            # to see impact of perfect text reconstruction
+            if config['model'] == 'FedCola_IMG_TXT' and config['init_text'] == 'ground_truth':
+                data_holder.set('ground_truth_text', labels)
 
             if args.accumulation == 0:
                 logger.info("Ground truth's size:{}".format(ground_truth[0].shape))
