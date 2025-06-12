@@ -53,6 +53,7 @@ DEFAULT_CONFIG = dict(signed=False,
                       z_norm=0,
                       group_lazy=1e-1,
                       init='randn',
+                      init_text='randn',
                       lr_decay=True,
 
                       dataset='CIFAR10',
