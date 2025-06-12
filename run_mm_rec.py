@@ -263,6 +263,7 @@ if __name__ == "__main__":
                         z_norm=args.z_norm,
                         group_lazy=config['group_lazy'],
                         init=config['init'],
+                        init_text=config['init_text'],
                         lr_decay=True,
                         dataset=config['dataset'],
                         geiping=config['geiping'],

@@ -1,6 +1,6 @@
 # data_holder.py
 
-from singleton_meta import SingletonMeta
+from utils.singleton_meta import SingletonMeta
 
 class DataHolder(metaclass=SingletonMeta):
     def __init__(self):
