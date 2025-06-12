@@ -1185,13 +1185,13 @@ class GradientReconstructor():
             embed = torch.randn(shape, **self.setup)
             # first token is always [CLS]
             cls_token_embedding = data_holder.get('cls_token_embedding').detach().clone()
-            cls_token_embedding = cls_token_embedding.unsqueeze(0).unsqueeze(0).detach().clone().repeat(shape[0], shape[1], 1, 1)
+            cls_token_embedding = cls_token_embedding.unsqueeze(0).unsqueeze(0).detach().clone().repeat(shape[0], shape[1], 1)
             embed[:, :, 0, :] = cls_token_embedding
             # last 1/2 of tokens are [PAD]
             pad_token_embedding = data_holder.get('pad_token_embedding').detach().clone()
-            pad_token_embedding = pad_token_embedding.unsqueeze(0).unsqueeze(0).detach().clone().repeat(shape[0], shape[1], 1, 1)
+            pad_token_embedding = pad_token_embedding.unsqueeze(0).unsqueeze(0).detach().clone().repeat(shape[0], shape[1], 1)
             half = shape[2] // 2
-            embed[:, :, half:, :] = pad_token_embedding
+            embed[:, :, half:, :] = pad_token_embedding.unsqueeze(2).repeat(1, 1, shape[2] - half, 1)
             embed = embed.to(self.device)
             return embed
         elif init_txt == 'ground_truth':
