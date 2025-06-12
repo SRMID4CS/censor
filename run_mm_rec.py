@@ -632,35 +632,40 @@ if __name__ == "__main__":
         logger.info('Best noise gradient L2 norm: {}'.format(noisy_input_gradient_norm))
         inversefed.utils.save_to_table(os.path.join(save_dir), name=f'{epoch}_epoch_noise_gradient_norm', dryrun=args.dryrun, noisy_input_gradient_norm=str(noisy_input_gradient_norm.item()), best_noise_loss=best_noise_loss.item(), target_id=target_id, seed=model_seed)
 
-        # simulate FL training, train the model with more instances, then evaluate the model
-        model.train()
-        logger.info(f"Model name: {config['model']}")
-        for i, (inputs, targets) in enumerate(trainloader):
-            logger.info(f"Epoch {epoch} batch {i} started")
-            optimizer.zero_grad()
-            inputs = inputs.to(**setup)
-            targets = targets.to(**setup)
-            if config['model'] == 'FedCola_TXT':
-                inputs = inputs.long()
-            if config['model'] == 'FedCola_IMG_TXT':
-                targets = targets.long()
-            targets = targets.long()
-            if 'FedCola' in config['model']:
+        # load saved model for the epoch if provided to save time, no need to train
+        if config['use_saved_models'] == True:
+            model_load_dir = config['model_load_dir']
+            model.load_state_dict(torch.load(os.path.join(model_load_dir, f"epoch_{epoch}", f"model_epoch_{epoch}.pt")))
+        else:
+            # simulate FL training, train the model with more instances, then evaluate the model
+            model.train()
+            logger.info(f"Model name: {config['model']}")
+            for i, (inputs, targets) in enumerate(trainloader):
+                logger.info(f"Epoch {epoch} batch {i} started")
+                optimizer.zero_grad()
+                inputs = inputs.to(**setup)
+                targets = targets.to(**setup)
+                if config['model'] == 'FedCola_TXT':
+                    inputs = inputs.long()
                 if config['model'] == 'FedCola_IMG_TXT':
-                    outputs = model([inputs, targets], feat_out=True)
-                elif config['model'] == 'FedCola_IMG':
-                    outputs = model([inputs,None])[0]
-                elif config['model'] == 'FedCola_TXT':
-                    outputs = model([None, inputs])[1]
-            else:
-                outputs = model(inputs)
-            if config['model'] == 'FedCola_IMG_TXT':
-                loss = loss_fn(*outputs, torch.tensor([1.0]).to(**setup))
-            else:
-                loss, _, _ = loss_fn(outputs, targets)
-            loss.backward()
-            optimizer.step()
-            logger.info(f"loss: {loss.item()} at epoch {epoch} batch {i}")
+                    targets = targets.long()
+                targets = targets.long()
+                if 'FedCola' in config['model']:
+                    if config['model'] == 'FedCola_IMG_TXT':
+                        outputs = model([inputs, targets], feat_out=True)
+                    elif config['model'] == 'FedCola_IMG':
+                        outputs = model([inputs,None])[0]
+                    elif config['model'] == 'FedCola_TXT':
+                        outputs = model([None, inputs])[1]
+                else:
+                    outputs = model(inputs)
+                if config['model'] == 'FedCola_IMG_TXT':
+                    loss = loss_fn(*outputs, torch.tensor([1.0]).to(**setup))
+                else:
+                    loss, _, _ = loss_fn(outputs, targets)
+                loss.backward()
+                optimizer.step()
+                logger.info(f"loss: {loss.item()} at epoch {epoch} batch {i}")
         
         logger.info(f"Epoch {epoch} training loss: {loss.item()}")
 
