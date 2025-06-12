@@ -617,12 +617,16 @@ if __name__ == "__main__":
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
             #one row represents psnrs of a batch
         
-        learning_rate = 0.001
-        # after inversion, we need to update the model with input_gradient
-        with torch.no_grad():
-            for param, best_grad in zip(model.parameters(), input_gradient):
-                param.data -= best_grad * learning_rate
-            logger.info("Model updated with best gradient.")
+        skip_update_for_attack_sample = True
+        if skip_update_for_attack_sample:
+            logger.info("Skipping model update for attack sample.")
+        else:
+            learning_rate = 0.001
+            # after inversion, we need to update the model with input_gradient
+            with torch.no_grad():
+                for param, best_grad in zip(model.parameters(), input_gradient):
+                    param.data -= best_grad * learning_rate
+                logger.info("Model updated with best gradient.")
 
         noisy_input_gradient_norm = torch.norm(torch.stack([g.norm() for g in input_gradient]), 2)
         logger.info('Best noise gradient L2 norm: {}'.format(noisy_input_gradient_norm))
