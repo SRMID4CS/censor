@@ -172,9 +172,10 @@ if __name__ == "__main__":
 
     logger.info("Model loaded: {}".format(model))
 
-    # Log dropout rates if model is FedCola_*
-    if config['model'].startswith('FedCola_'):
+    try:
         log_model_dropout_rates(model, logger)
+    except Exception as e:
+        logger.error(f"Error logging dropout rates: {e}")
 
     bert_embedding = None
     if hasattr(model, 'embeddings'):
