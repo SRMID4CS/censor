@@ -803,6 +803,7 @@ class GradientReconstructor():
         restarts = self.config['restarts']
         scores = torch.zeros(restarts)
         x = [None for i in range(restarts)]
+        _labels = None
         if self.config['model'] == 'FedCola_IMG_TXT':
             _labels = [None for i in range(restarts)]
         # logger.info(f"choose_optimal label type:{type(labels)}")
@@ -847,7 +848,7 @@ class GradientReconstructor():
             return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), None
         else:
             logger.info('Choosing optimal x...')
-            return None, scores[optimal_index].item(), x[optimal_index].clone(), _labels[optimal_index].clone()
+            return None, scores[optimal_index].item(), x[optimal_index].clone(), _labels[optimal_index].clone() if _labels is not None else None
 
     def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500, txt_shape=(40,384)):
         self.model.eval()
