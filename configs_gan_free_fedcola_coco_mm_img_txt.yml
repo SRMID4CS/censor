@@ -23,7 +23,7 @@
 
   max_iterations : 24000    #Maximum number of iterations for reconstruction.
 
-  use_saved_models : True  # whether to use saved models or not
+  use_saved_models : False  # whether to use saved models or not
   model_load_dir : '/home/ubuntu/mnt-disk/results/fedcola/exp_name'  # the directory to load saved models from
 
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
