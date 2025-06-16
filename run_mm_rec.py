@@ -119,6 +119,20 @@ def save_experiment_config(config_path, save_dir):
 
 
 
+def log_model_dropout_rates(model, logger):
+    """Logs the dropout rates of all dropout layers in the model."""
+    dropout_layers = []
+    for name, module in model.named_modules():
+        if isinstance(module, nn.Dropout):
+            dropout_layers.append((name, module.p))
+    if dropout_layers:
+        logger.info("Dropout rates in the model:")
+        for name, rate in dropout_layers:
+            logger.info(f"Dropout layer: {name}, rate: {rate}")
+    else:
+        logger.info("No nn.Dropout layers found in the model.")
+
+
 if __name__ == "__main__":
     # Choose GPU device and print status information:
     current_time = datetime.datetime.now().strftime("%b.%d_%H.%M.%S")
@@ -155,6 +169,12 @@ if __name__ == "__main__":
     
     model, model_seed = inversefed.construct_model(config['model'], num_classes=nclass_dict[config['dataset']], num_channels=3, seed=set_seed, args=args)
     model.to(**setup)
+
+    logger.info("Model loaded: {}".format(model))
+
+    # Log dropout rates if model is FedCola_*
+    if config['model'].startswith('FedCola_'):
+        log_model_dropout_rates(model, logger)
 
     bert_embedding = None
     if hasattr(model, 'embeddings'):
