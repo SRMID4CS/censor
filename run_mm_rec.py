@@ -125,6 +125,8 @@ def log_model_dropout_rates(model, logger):
     droppath_layers = []
     # DropPath may be from timm or custom, so check by class name
     for name, module in model.named_modules():
+        if isinstance(module, nn.Dropout):
+            dropout_layers.append((name, module.p))
         elif module.__class__.__name__ == 'DropPath':
             # DropPath usually has attribute drop_prob or drop_path_rate
             drop_prob = getattr(module, 'drop_prob', None)
@@ -199,21 +201,22 @@ if __name__ == "__main__":
 
     if bert_embedding is not None:
         logger.info("BERT model loaded for text embedding: {}".format(bert_embedding))
+        
+        bert_tokenizer = BertTokenizer.from_pretrained(
+            'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'
+        )
+
+        data_holder = DataHolder()
+
+        cls_token_embedding = bert_embedding(torch.tensor([[bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.cls_token)]], device=setup['device']))[0]
+        pad_token_embedding = bert_embedding(torch.tensor([[bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.pad_token)]], device=setup['device']))[0]
+
+        data_holder.set('cls_token_embedding', cls_token_embedding)
+        data_holder.set('pad_token_embedding', pad_token_embedding)
     else:
         logger.info("No BERT model found, using default model.")
 
-    
-    bert_tokenizer = BertTokenizer.from_pretrained(
-        'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'
-    )
 
-    data_holder = DataHolder()
-
-    cls_token_embedding = bert_embedding(torch.tensor([[bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.cls_token)]], device=setup['device']))[0]
-    pad_token_embedding = bert_embedding(torch.tensor([[bert_tokenizer.convert_tokens_to_ids(bert_tokenizer.pad_token)]], device=setup['device']))[0]
-
-    data_holder.set('cls_token_embedding', cls_token_embedding)
-    data_holder.set('pad_token_embedding', pad_token_embedding)
 
     if config['dataset'].startswith('FFHQ') or config['dataset'].endswith('FFHQ'):
         dm = torch.as_tensor(getattr(inversefed.consts, f'cifar10_mean'), **setup)[:, None, None]
