@@ -131,8 +131,6 @@ def log_model_dropout_rates(model, logger):
             if drop_prob is None:
                 drop_prob = getattr(module, 'drop_path_rate', None)
             droppath_layers.append((name, drop_prob))
-        if isinstance(module, nn.Dropout):
-            dropout_layers.append((name, module.p))
     if dropout_layers:
         logger.info("Dropout rates in the model:")
         for name, rate in dropout_layers:
