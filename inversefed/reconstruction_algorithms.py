@@ -1207,9 +1207,9 @@ class GradientReconstructor():
 
 
     def _init_images(self, img_shape):
-        if self.images is not None:
-            return [img.detach().clone().to(self.device) for img in self.images]
-        elif self.config['init'] == 'randn':
+        # if self.images is not None:
+        #     return [img.detach().clone().to(self.device) for img in self.images]
+        if self.config['init'] == 'randn':
             return torch.randn((self.config['restarts'], self.num_images, *img_shape), **self.setup)
         elif self.config['init'] == 'rand':
             return (torch.rand((self.config['restarts'], self.num_images, *img_shape), **self.setup) - 0.5) * 2
