@@ -1173,10 +1173,10 @@ class GradientReconstructor():
 
         data_holder = DataHolder()
 
-        if self.text_embeds is not None:
-            # Reuse old data if present, resized if needed
-            return [text.detach().clone().to(self.device) for text in self.text_embeds]
-        elif init_txt == 'randn':
+        # if self.text_embeds is not None:
+        #     # Reuse old data if present, resized if needed
+        #     return [text.detach().clone().to(self.device) for text in self.text_embeds]
+        if init_txt == 'randn':
             return torch.randn(shape, **self.setup)
         elif init_txt == 'rand':
             return (torch.rand(shape, **self.setup) - 0.5) * 2
@@ -1193,7 +1193,7 @@ class GradientReconstructor():
             pad_token_embedding = pad_token_embedding.unsqueeze(0).unsqueeze(0).detach().clone().repeat(shape[0], shape[1], 1)
             half = shape[2] // 2
             embed[:, :, half:, :] = pad_token_embedding.unsqueeze(2).repeat(1, 1, shape[2] - half, 1)
-            embed = embed.to(self.device)
+            embed = embed.detach().clone().to(self.device)
             return embed
         elif init_txt == 'ground_truth':
             # provide ground truth text for mm reconstruction 
