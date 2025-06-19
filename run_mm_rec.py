@@ -703,12 +703,12 @@ if __name__ == "__main__":
                 optimizer.step()
                 logger.info(f"loss: {loss.item()} at epoch {epoch} batch {i}")
         
-        logger.info(f"Epoch {epoch} training loss: {loss.item()}")
+            logger.info(f"Epoch {epoch} training loss: {loss.item()}")
 
-        # save the model checkpoint at each epoch
-        save_path = os.path.join(save_dir, f"model_epoch_{epoch}.pt")
-        torch.save(model.state_dict(), save_path)
-        logger.info(f"Model {epoch} epoch checkpoint saved at {save_path}")
+            # save the model checkpoint at each epoch
+            save_path = os.path.join(save_dir, f"model_epoch_{epoch}.pt")
+            torch.save(model.state_dict(), save_path)
+            logger.info(f"Model {epoch} epoch checkpoint saved at {save_path}")
 
     # Print final timestamp
     logger.info(datetime.datetime.now().strftime("%A, %d %B %Y %I:%M%p"))
