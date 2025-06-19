@@ -120,9 +120,17 @@ def save_experiment_config(config_path, save_dir):
 
 
 def log_model_dropout_rates(model, logger):
-    """Logs the dropout rates of all dropout layers in the model."""
+    """Logs the dropout rates of all dropout and DropPath layers in the model."""
     dropout_layers = []
+    droppath_layers = []
+    # DropPath may be from timm or custom, so check by class name
     for name, module in model.named_modules():
+        elif module.__class__.__name__ == 'DropPath':
+            # DropPath usually has attribute drop_prob or drop_path_rate
+            drop_prob = getattr(module, 'drop_prob', None)
+            if drop_prob is None:
+                drop_prob = getattr(module, 'drop_path_rate', None)
+            droppath_layers.append((name, drop_prob))
         if isinstance(module, nn.Dropout):
             dropout_layers.append((name, module.p))
     if dropout_layers:
@@ -131,6 +139,12 @@ def log_model_dropout_rates(model, logger):
             logger.info(f"Dropout layer: {name}, rate: {rate}")
     else:
         logger.info("No nn.Dropout layers found in the model.")
+    if droppath_layers:
+        logger.info("DropPath rates in the model:")
+        for name, rate in droppath_layers:
+            logger.info(f"DropPath layer: {name}, drop_prob: {rate}")
+    else:
+        logger.info("No DropPath layers found in the model.")
 
 
 if __name__ == "__main__":
