@@ -1168,7 +1168,8 @@ class GradientReconstructor():
         Returns:
             List[Tensor]: List of shape (restarts, num_images, seq_len, embed_dim)
         """
-        shape = (self.config['restarts'], self.num_images, 40, 384)  # shape is (seq_len, embed_dim)
+        logger.info(f"Initializing text embeddings with shape: {shape}")
+        shape = (self.config['restarts'], self.num_images, shape[-2], shape[-1])  # shape is (seq_len, embed_dim)
         init_txt = self.config.get('init_text', self.config['init'])
 
         data_holder = DataHolder()
