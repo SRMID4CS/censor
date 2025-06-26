@@ -366,7 +366,7 @@ if __name__ == "__main__":
                 target_id_ = target_id
                 while len(labels) < config['num_images']:
                     img, label = validloader.dataset[target_id_]
-                    target_id_ += 1
+                    target_id_ += config['target_id_increment']
                     label_in_device = label.to(setup['device']) if torch.is_tensor(label) else torch.tensor(label, device=setup['device'])
                     if config['model'] == 'FedCola_IMG_TXT' or (label_in_device not in labels):
                         logger.info("loaded img %d" % (target_id_ - 1))
