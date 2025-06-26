@@ -400,7 +400,7 @@ class GradientReconstructor():
             logger.info(f"x: {n_x}")
         self.n_trainable = n_z + n_G + n_x + n_noise
 
-    def reconstruct(self, input_data, labels, img_shape=(3, 32, 32), txt_shape=(40,384), dryrun=False, tol=None):
+    def reconstruct(self, input_data, labels, img_shape=(3, 32, 32), txt_shape=(10,384), dryrun=False, tol=None):
         """Reconstruct image from gradient."""
         if torch.is_tensor(input_data[0]):  
             self.input_data = [input_data]
@@ -512,7 +512,7 @@ class GradientReconstructor():
                 self.config['cost_fn'] = 'l2'
                 self.config['optim'] = 'adam'
                 # self.max_iterations = 1
-                _x = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations)
+                _x = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations, txt_shape=txt_shape)
                 _, best_score, x_best, _ = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
                 stats_yin = {}
                 stats_yin['opt'] = best_score
@@ -522,7 +522,7 @@ class GradientReconstructor():
                 self.config['cost_fn'] = 'sim_cmpr0'
                 self.config['image_norm'] = -1
                 self.config['group_lazy'] = -1
-                _x = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations)
+                _x = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations, txt_shape=txt_shape)
                 _, best_score, x_best, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
                 stats_gp = {}
                 stats_gp['opt'] = best_score
