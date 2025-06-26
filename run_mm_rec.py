@@ -367,19 +367,22 @@ if __name__ == "__main__":
                 while len(labels) < config['num_images']:
                     img, label = validloader.dataset[target_id_]
                     target_id_ += 1
-                    if (label not in labels):         
+                    label_in_device = label.to(setup['device']) if torch.is_tensor(label) else torch.tensor(label, device=setup['device'])
+                    if config['model'] == 'FedCola_IMG_TXT' or (label_in_device not in labels):
                         logger.info("loaded img %d" % (target_id_ - 1))
-                        labels.append(torch.as_tensor((label,), device=setup['device']))
+                        labels.append(label_in_device)
                         ground_truth.append(img.to(**setup))
                         tid_list.append(target_id_ - 1)
 
                 ground_truth = torch.stack(ground_truth)
-                labels = torch.cat(labels)
 
                 if config['model'] == 'FedCola_TXT':
                     ground_truth = ground_truth.long()
                 if config['model'] == 'FedCola_IMG_TXT':
+                    labels = torch.stack(labels)
                     labels = labels.long()
+                else:
+                    labels = torch.cat(labels)
 
             if config['model'] == 'FedCola_IMG_TXT':
                 input_shape = (3, ground_truth.shape[-2], ground_truth.shape[-1])
