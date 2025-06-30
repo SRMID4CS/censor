@@ -1059,6 +1059,27 @@ def mome_toy_patch16_224(pretrained, args, **kwargs):
 
     return model 
 
+# custom models
+@register_model
+def mome_small_patch8(pretrained, args, **kwargs):
+
+    model = ModalityAgnosticTransformer(img_size=224,
+                patch_size=8,
+                embed_dim=384,
+                depth=12,
+                num_heads=6,
+                vocab_size=args.vocab_size, 
+                max_text_len=args.seq_len,
+                drop_path_rate=args.dropout,
+                shared_param=args.shared_param,
+                share_scope=args.share_scope,
+                colearn_param=args.colearn_param,
+                **kwargs
+                )
+    model.sync_shared_weights()
+    if pretrained:
+        model.pretrain_vit(['vit_small_patch16_224', None])
+    return model 
 
 
 
