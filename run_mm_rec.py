@@ -293,6 +293,7 @@ if __name__ == "__main__":
                         gias_lr=config['gias_lr'],
                         gias_iterations=config['gias_iterations'],
                         model=config['model'],
+                        save_intermediate_at=config['save_intermediate_at'],
                         )
         elif config['optim'] == 'GAN_free':
             config_m = dict(cost_fn=config['cost_fn'],
@@ -320,6 +321,7 @@ if __name__ == "__main__":
                         gias_lr=0.0,
                         gias_iterations=0,
                         model=config['model'],
+                        save_intermediate_at=config['save_intermediate_at'],
                         )
 
         G = None
