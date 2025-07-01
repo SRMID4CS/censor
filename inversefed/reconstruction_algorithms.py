@@ -95,6 +95,7 @@ DEFAULT_CONFIG = dict(signed=False,
                       defense_setting=[],
                       num_sample=10,
                       model = "N/A",  # Model name, used for loading the model
+                      save_intermediate_at = 100,
                       )
 
 def _validate_config(config):
