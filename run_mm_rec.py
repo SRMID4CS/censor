@@ -666,7 +666,7 @@ if __name__ == "__main__":
 
                     print("BLEU score:", bleu_result)
                     print("ROUGE score:", rouge_result)
-                    torchvision.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text_{tid_list[j]}', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result)
+                    inversefed.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text_{tid_list[j]}', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result)
                 else:
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
             #one row represents psnrs of a batch
