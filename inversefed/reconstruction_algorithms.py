@@ -1006,16 +1006,22 @@ class GradientReconstructor():
                             logger.info(f'Saving intermediate results at iteration {iteration}...')
                             if self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_IMG':
                                 for num_img in range(self.num_images):
-                                    torchvision.utils.save_image(imgs[num_img:num_img + 1, ...], os.path.join(data_holder.get('save_dir'),f'{num_img}/', f'{num_img}_it_{iteration}.png'))
+                                    dir_path = os.path.join(data_holder.get('save_dir'), f'{num_img}/')
+                                    os.makedirs(dir_path, exist_ok=True)
+                                    torchvision.utils.save_image(imgs[num_img:num_img + 1, ...], os.path.join(dir_path, f'{num_img}_it_{iteration}.png'))
                                 if self.config['model'] == 'FedCola_IMG_TXT':
                                     for num_txt in range(self.num_images):
                                         recon_sentence = de_embed_text(Ys[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
-                                        with open(os.path.join(data_holder.get('save_dir'), f'/{num_txt}/', f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
+                                        dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
+                                        os.makedirs(dir_path, exist_ok=True)
+                                        with open(os.path.join(dir_path, f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
                                             f.write(recon_sentence)
                             if self.config['model'] == 'FedCola_TXT':
                                 for num_txt in range(self.num_images):
                                     recon_sentence = de_embed_text(imgs[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
-                                    with open(os.path.join(data_holder.get('save_dir'), f'/{num_txt}/', f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
+                                    dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
+                                    os.makedirs(dir_path, exist_ok=True)
+                                    with open(os.path.join(dir_path, f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
                                         f.write(recon_sentence)
 
                         if (iteration + 1 == self.max_iterations) or iteration % save_interval == 0:
