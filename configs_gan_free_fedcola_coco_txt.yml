@@ -8,12 +8,12 @@
   init : 'randn'     #how we initial the original latent code.
   init_text : 'randn'     #how we initial the original latent code of text embedding.
   model : 'FedCola_TXT'   #FL model ['FedCola_IMG', 'FedCola_TXT', 'FedCola_IMG_TXT']
-  restarts : 5
+  restarts : 10
 
   num_images : 1   # the number of images to reconstruct at a batch
   num_exp : 1     # the number of experiments
   target_id : 10 # the target image id + iterative incrementation of id
-  target_id_increment : 1 # the incrementation of target image id
+  target_id_increment : 5 # the incrementation of target image id
   lr : 0.1            #learning rate for Yin et al.
   total_variation : -1     #the coefficient of total variation 
   image_norm : 0.000001    #the coefficient of norm regularizer for Yin et al.
@@ -21,7 +21,7 @@
   
   bn_stat : 0       #choose if we use bn statistic to regularizer 
 
-  max_iterations : 1000    #Maximum number of iterations for reconstruction.
+  max_iterations : 2000    #Maximum number of iterations for reconstruction.
 
   use_saved_models : False  # whether to use saved models or not
   model_load_dir : '/home/ubuntu/mnt-disk/results/fedcola/exp_name'  # the directory to load saved models from
@@ -41,10 +41,10 @@
   output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
 
   #Choice for GAN-free methods
-  geiping : true
-  yin : false
+  geiping : True
+  yin : False
 
-  train_epochs: 10
+  train_epochs: 3
   our_num_tries : 10
   #Defense parameter
   defense_method : None

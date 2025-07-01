@@ -6,14 +6,14 @@
   indices : 'def'      #decide which part of gradients to be involved in the final gradients match loss.
   weights : 'equal'    #weight of every graident scalar's matching loss
   init : 'randn'     #how we initial the original latent code.
-  init_text : 'randn'     #how we initial the original latent code of text embedding.
+  init_text : 'randn'    #how we initial the original latent code of text embedding.
   model : 'FedCola_IMG_TXT'   #FL model ['FedCola_IMG', 'FedCola_TXT', 'FedCola_IMG_TXT']
   restarts : 4
 
   num_images : 1   # the number of images to reconstruct at a batch
   num_exp : 1     # the number of experiments
   target_id : 10 # the target image id + iterative incrementation of id
-  target_id_increment : 1 # the incrementation of target image id
+  target_id_increment : 5 # the incrementation of target image id
   lr : 0.1            #learning rate for Yin et al.
   total_variation : 0.0001     #the coefficient of total variation 
   image_norm : 0.000001    #the coefficient of norm regularizer for Yin et al.
@@ -44,7 +44,7 @@
   geiping : true
   yin : false
 
-  train_epochs: 10
+  train_epochs: 3
   our_num_tries : 10
   #Defense parameter
   defense_method : None
@@ -61,3 +61,4 @@
 
   #LR pace for training
   lr_same_pace: false 
+
