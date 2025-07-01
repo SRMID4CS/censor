@@ -1,6 +1,8 @@
 """Mechanisms for image reconstruction from parameter gradients."""
+import os
 
 import torch
+import torchvision
 import torch.nn as nn
 # from torch.nn.parallel import DistributedDataParallel as DDP
 from torchmultimodal.modules.losses.contrastive_loss_with_temperature import ContrastiveLossWithTemperature
@@ -23,6 +25,8 @@ import defense
 from inversefed.consts import STYLE_LEN
 import nevergrad as ng
 import numpy as np
+
+from utils.text_utils import de_embed_text
 
 import logging
 
@@ -853,6 +857,7 @@ class GradientReconstructor():
     def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500, txt_shape=(40,384)):
         self.model.eval()
 
+        data_holder = DataHolder()
 
         max_iterations = max_iterations
         if self.config['model'] == 'FedCola_IMG':
@@ -996,6 +1001,21 @@ class GradientReconstructor():
 
                     with torch.no_grad():
                         # Project into image space
+                        if self.config['save_intermediate_at'] > 0 and (iteration % self.config['save_intermediate_at'] == 0):
+                            logger.info(f'Saving intermediate results at iteration {iteration}...')
+                            if self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_IMG':
+                                for num_img in range(self.num_images):
+                                    torchvision.utils.save_image(imgs[num_img:num_img + 1, ...], os.path.join(data_holder.get('save_dir'),f'{num_img}/', f'{num_img}_it_{iteration}.png'))
+                                if self.config['model'] == 'FedCola_IMG_TXT':
+                                    for num_txt in range(self.num_images):
+                                        recon_sentence = de_embed_text(Ys[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                                        with open(os.path.join(data_holder.get('save_dir'), f'/{num_txt}/', f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
+                                            f.write(recon_sentence)
+                            if self.config['model'] == 'FedCola_TXT':
+                                for num_txt in range(self.num_images):
+                                    recon_sentence = de_embed_text(imgs[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                                    with open(os.path.join(data_holder.get('save_dir'), f'/{num_txt}/', f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
+                                        f.write(recon_sentence)
 
                         if (iteration + 1 == self.max_iterations) or iteration % save_interval == 0:
                             logger.info(f'It: {iteration}. Rec. loss: {rec_loss:2.4f} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | l2: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | kld: {losses[4]:7.4f}')

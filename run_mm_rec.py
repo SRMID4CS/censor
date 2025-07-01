@@ -215,6 +215,8 @@ if __name__ == "__main__":
 
         data_holder.set('cls_token_embedding', cls_token_embedding)
         data_holder.set('pad_token_embedding', pad_token_embedding)
+        data_holder.set('bert_tokenizer', bert_tokenizer)
+        data_holder.set('bert_embedding', bert_embedding)
     else:
         logger.info("No BERT model found, using default model.")
 
@@ -241,6 +243,7 @@ if __name__ == "__main__":
         save_dir = os.path.join(config['output_dir'], config['exp_name'], f'epoch_{epoch}')
         os.makedirs(save_dir, exist_ok=True)
         logger.info(f"Epoch {epoch} started,saved at {save_dir}")
+        data_holder.set('save_dir', save_dir)
 
         # model = nn.DataParallel(model)
         model.eval()
