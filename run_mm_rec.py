@@ -40,6 +40,8 @@ import FedCola.src.models.mome
 from utils.text_utils import de_embed_text
 from transformers import BertTokenizer
 
+import evaluate
+
 
 def init_logger(output_dir, log_level=logging.INFO):
     """Initialize and configure the root logger."""
@@ -616,12 +618,14 @@ if __name__ == "__main__":
 
                     if config['model'] == 'FedCola_TXT' or (config['model'] == 'FedCola_IMG_TXT' and config['init_text'] != 'ground_truth'):
                         # Save the text after deembedding
+                        recon_sentence_list = []
                         for j in range(config['num_images']):
-                            sentence_embedding_seq = output_den[j:j + 1, ...] if config['model'] == 'FedCola_TXT' else label_best[j:j + 1, ...]
+                            recon_sentence_embedding_seq = output_den[j:j + 1, ...] if config['model'] == 'FedCola_TXT' else label_best[j:j + 1, ...]
                             # convert to text
-                            sentence = de_embed_text(sentence_embedding_seq[0], bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
+                            recon_sentence = de_embed_text(recon_sentence_embedding_seq[0], bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
+                            recon_sentence_list.append(recon_sentence)
                             with open(os.path.join(ouput_dir, f'{tid_list[j]}_gen.txt'), 'w') as f:
-                                f.write(sentence)
+                                f.write(recon_sentence)
 
                     else:
                         # Default - Save the image
@@ -652,6 +656,17 @@ if __name__ == "__main__":
                     print("Ground truth sentence:", sentence)
                     with open(os.path.join(save_dir, f'{tid_list[j]}_gt.txt'), 'w') as f:
                         f.write(sentence)
+
+                    # calculate BLEU and ROGUE scores
+                    bleu_scorer = evaluate.load("bleu")
+                    rouge_scorer = evaluate.load("rouge")
+
+                    bleu_result = bleu_scorer.compute(predictions=recon_sentence_list, references=[sentence])
+                    rouge_result = rouge_scorer.compute(predictions=recon_sentence_list, references=[sentence])
+
+                    print("BLEU score:", bleu_result)
+                    print("ROUGE score:", rouge_result)
+                    torchvision.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text_{tid_list[j]}', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result)
                 else:
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
             #one row represents psnrs of a batch
