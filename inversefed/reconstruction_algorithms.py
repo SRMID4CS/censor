@@ -527,7 +527,9 @@ class GradientReconstructor():
                 self.config['cost_fn'] = 'sim_cmpr0'
                 self.config['image_norm'] = -1
                 self.config['group_lazy'] = -1
-                _x = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations, txt_shape=txt_shape)
+                _x, optimized_labels = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations, txt_shape=txt_shape)
+                if self.config['model'] == 'FedCola_IMG_TXT':
+                    infer_labels = optimized_labels
                 _, best_score, x_best, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
                 stats_gp = {}
                 stats_gp['opt'] = best_score
@@ -838,21 +840,21 @@ class GradientReconstructor():
 
 
         if G:   #For GIAS
-            logger.info('Choosing optimal G...')
+            logger.info(f'Choosing optimal G... : {optimal_index}')
             return  G[optimal_index], scores[optimal_index].item(), x[optimal_index].clone(), None
         
         
         if self.generative_model_name in ['stylegan2_io']:
-            logger.info('Choosing optimal z and noise...')
+            logger.info(f'Choosing optimal z and noise... : {optimal_index}')
             return dummy_z[optimal_index].detach().clone(), scores[optimal_index].item(), x[optimal_index].clone(), self.noises[optimal_index]
         elif self.generative_model_name in ['BigGAN']:
-            logger.info('Choosing optimal z and ys...')
+            logger.info(f'Choosing optimal z and ys... : {optimal_index}')
             return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), self.ys[optimal_index]
         elif self.generative_model_name:
-            logger.info('Choosing optimal z...')
+            logger.info(f'Choosing optimal z... : {optimal_index}')
             return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), None
         else:
-            logger.info('Choosing optimal x...')
+            logger.info(f'Choosing optimal x... : {optimal_index}')
             return None, scores[optimal_index].item(), x[optimal_index].clone(), _labels[optimal_index].clone() if _labels is not None else None
 
     def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500, txt_shape=(40,384)):
@@ -1048,8 +1050,11 @@ class GradientReconstructor():
             pass
         if self.G:
             self.G.to("cpu")
-        
-        return _x
+
+        if self.config['model'] == 'FedCola_IMG_TXT':
+            return _x, labels
+        else: 
+            return _x, None
 
     def gias_param_search(self, optimal_z, _x, labels, optimal_noise=None, optimal_ys=None, tol=None, dryrun=False):
         
