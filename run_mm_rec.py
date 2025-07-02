@@ -561,7 +561,8 @@ if __name__ == "__main__":
                     feat_mse = -1
                     output_den = torch.clamp(output * ds + dm, 0, 1)
                 else:
-                    output_den = torch.clamp(output * ds + dm, 0, 1)
+                    if config['model'] != 'FedCola_TXT':
+                        output_den = torch.clamp(output * ds + dm, 0, 1)
                     ground_truth_den = torch.clamp(ground_truth * ds + dm, 0, 1)
                     # logger.info("output's dimension:{} ground_truth's dimension:{}".format(output.shape, ground_truth.shape))
                     if 'FedCola' in config['model']:
@@ -625,9 +626,9 @@ if __name__ == "__main__":
                         # Save the text after deembedding
                         recon_sentence_list = []
                         for j in range(config['num_images']):
-                            recon_sentence_embedding_seq = output_den[j:j + 1, ...] if config['model'] == 'FedCola_TXT' else label_best[j:j + 1, ...]
+                            recon_sentence_embedding_seq = output_den[j, ...] if config['model'] == 'FedCola_TXT' else label_best[j, ...]
                             # convert to text
-                            recon_sentence = de_embed_text(recon_sentence_embedding_seq[0], bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
+                            recon_sentence = de_embed_text(recon_sentence_embedding_seq, bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
                             recon_sentence_list.append(recon_sentence)
                             with open(os.path.join(ouput_dir, f'{tid_list[j]}_gen.txt'), 'w') as f:
                                 f.write(recon_sentence)
