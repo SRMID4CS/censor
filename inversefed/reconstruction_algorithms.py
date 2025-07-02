@@ -1008,7 +1008,7 @@ class GradientReconstructor():
                                 for num_img in range(self.num_images):
                                     dir_path = os.path.join(data_holder.get('save_dir'), f'{num_img}/')
                                     os.makedirs(dir_path, exist_ok=True)
-                                    torchvision.utils.save_image(imgs[num_img:num_img + 1, ...], os.path.join(dir_path, f'{num_img}_trial_{trial}_it_{iteration}.png'))
+                                    torchvision.utils.save_image(torch.clamp(imgs.detach().clone() * ds + dm, 0, 1)[num_img:num_img + 1, ...], os.path.join(dir_path, f'{num_img}_trial_{trial}_it_{iteration}.png'))
                                 if self.config['model'] == 'FedCola_IMG_TXT':
                                     for num_txt in range(self.num_images):
                                         recon_sentence = de_embed_text(Ys[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
