@@ -218,6 +218,7 @@ if __name__ == "__main__":
         data_holder.set('bert_tokenizer', bert_tokenizer)
         data_holder.set('bert_embedding', bert_embedding)
     else:
+        data_holder = DataHolder()
         logger.info("No BERT model found, using default model.")
 
 
