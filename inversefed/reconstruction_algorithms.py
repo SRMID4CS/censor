@@ -95,7 +95,8 @@ DEFAULT_CONFIG = dict(signed=False,
                       defense_setting=[],
                       num_sample=10,
                       model = "N/A",  # Model name, used for loading the model
-                      save_intermediate_at = 100,
+                      save_intermediate_at_img=1000,  # the interval at which to save intermediate results, -1 for no intermediate saving
+                      save_intermediate_at_txt=100,  # the interval at which to save intermediate results, -1 for no intermediate saving
                       )
 
 def _validate_config(config):
@@ -1006,20 +1007,24 @@ class GradientReconstructor():
 
                     with torch.no_grad():
                         # Project into image space
-                        if self.config['save_intermediate_at'] > 0 and (iteration % self.config['save_intermediate_at'] == 0):
-                            logger.info(f'Saving intermediate results at iteration {iteration}...')
+                        if self.config['save_intermediate_at_img'] > 0 and (iteration % self.config['save_intermediate_at_img'] == 0):
+                            logger.info(f'Saving intermediate IMG at iteration {iteration}...')
                             if self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_IMG':
                                 for num_img in range(self.num_images):
                                     dir_path = os.path.join(data_holder.get('save_dir'), f'{num_img}/')
                                     os.makedirs(dir_path, exist_ok=True)
                                     torchvision.utils.save_image(torch.clamp(imgs.detach().clone() * ds + dm, 0, 1)[num_img:num_img + 1, ...], os.path.join(dir_path, f'{num_img}_trial_{trial}_it_{iteration}.png'))
-                                if self.config['model'] == 'FedCola_IMG_TXT':
-                                    for num_txt in range(self.num_images):
-                                        recon_sentence = de_embed_text(Ys[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
-                                        dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
-                                        os.makedirs(dir_path, exist_ok=True)
-                                        with open(os.path.join(dir_path, f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
-                                            f.write(recon_sentence)
+                        if self.config['save_intermediate_at_txt'] > 0 and (iteration % self.config['save_intermediate_at_txt'] == 0):
+                            logger.info(f'Saving intermediate TXT at iteration {iteration}...')
+                            if self.config['model'] == 'FedCola_IMG_TXT':
+                                for num_txt in range(self.num_images):
+                                    recon_sentence = de_embed_text(Ys[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                                    dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
+                                    os.makedirs(dir_path, exist_ok=True)
+                                    with open(os.path.join(dir_path, f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
+                                        f.write(recon_sentence)
+                        if self.config['save_intermediate_at_txt'] > 0 and (iteration % self.config['save_intermediate_at_txt'] == 0):
+                            logger.info(f'Saving intermediate TXT at iteration {iteration}...')
                             if self.config['model'] == 'FedCola_TXT':
                                 for num_txt in range(self.num_images):
                                     recon_sentence = de_embed_text(imgs[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))

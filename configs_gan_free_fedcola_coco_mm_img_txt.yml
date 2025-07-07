@@ -26,7 +26,8 @@
   use_saved_models : False  # whether to use saved models or not
   model_load_dir : '/home/ubuntu/mnt-disk/results/fedcola/exp_name'  # the directory to load saved models from
 
-  save_intermediate_at : 1000  # the interval at which to save intermediate results, -1 for no intermediate saving
+  save_intermediate_at_img : 1000  # the interval at which to save intermediate results, -1 for no intermediate saving
+  save_intermediate_at_txt : 100  # the interval at which to save intermediate results, -1 for no intermediate saving
 
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
 
