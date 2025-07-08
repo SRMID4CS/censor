@@ -698,7 +698,13 @@ if __name__ == "__main__":
         # load saved model for the epoch if provided to save time, no need to train
         if config['use_saved_models'] == True:
             model_load_dir = config['model_load_dir']
-            model.load_state_dict(torch.load(os.path.join(model_load_dir, f"epoch_{epoch}", f"model_epoch_{epoch}.pt")))
+            if config['model'] == 'FedCola_IMG_TXT':
+                modality = 'img_txt'
+            elif config['model'] == 'FedCola_IMG':
+                modality = 'img'
+            elif config['model'] == 'FedCola_TXT':
+                modality = 'txt'
+            model.load_state_dict(torch.load(os.path.join(model_load_dir, f"epoch_{epoch}", f"model_epoch_{modality}_{epoch}.pt")))
         else:
             # simulate FL training, train the model with more instances, then evaluate the model
             model.train()
@@ -733,9 +739,10 @@ if __name__ == "__main__":
             logger.info(f"Epoch {epoch} training loss: {loss.item()}")
 
             # save the model checkpoint at each epoch
-            save_path = os.path.join(save_dir, f"model_epoch_{epoch}.pt")
-            torch.save(model.state_dict(), save_path)
-            logger.info(f"Model {epoch} epoch checkpoint saved at {save_path}")
+            if config['save_model']:
+                save_path = os.path.join(save_dir, f"model_epoch_{epoch}.pt")
+                torch.save(model.state_dict(), save_path)
+                logger.info(f"Model {epoch} epoch checkpoint saved at {save_path}")
 
     # Print final timestamp
     logger.info(datetime.datetime.now().strftime("%A, %d %B %Y %I:%M%p"))

@@ -28,6 +28,7 @@
 
   save_intermediate_at_img : 1000  # the interval at which to save intermediate results, -1 for no intermediate saving
   save_intermediate_at_txt : 100  # the interval at which to save intermediate results, -1 for no intermediate saving
+  save_model : False  # whether to save the model or not
 
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
 
