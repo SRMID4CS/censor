@@ -360,6 +360,9 @@ if __name__ == "__main__":
 
             if config['num_images'] == 1:
                 ground_truth, labels = validloader.dataset[target_id]
+                # Unrelated input pair experiment
+                if config['model'] == 'FedCola_IMG_TXT' and config['unrelated_target_offset'] > 0:
+                    unrelated_gt, labels = validloader.dataset[target_id + config['unrelated_target_offset']]
                 ground_truth = ground_truth.unsqueeze(0).to(**setup)
                 if config['model'] == 'FedCola_TXT':
                     ground_truth = ground_truth.long()
