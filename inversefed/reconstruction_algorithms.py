@@ -1,6 +1,7 @@
 """Mechanisms for image reconstruction from parameter gradients."""
 import os
 
+from inversefed.indices_fedcola import select_indices_fedcola
 import torch
 import torchvision
 import torch.nn as nn
@@ -1310,7 +1311,7 @@ class GradientReconstructor():
                 torch.cuda.empty_cache()
                 rec_loss = reconstruction_costs([gradient], input_gradient[i],
                                                 cost_fn=self.config['cost_fn'], indices=self.config['indices'],
-                                                weights=self.config['weights'])
+                                                weights=self.config['weights'], model = self.model)
 
                 if self.config['total_variation'] > 0:
                     tv_loss = TV(x_trial)
@@ -1392,7 +1393,7 @@ class GradientReconstructor():
 
             rec_loss = reconstruction_costs([gradient], input_gradient[i],
                                     cost_fn=self.config['cost_fn'], indices=self.config['indices'],
-                                    weights=self.config['weights'])
+                                    weights=self.config['weights'], model = self.model)
             total_loss += rec_loss
         return total_loss
 
@@ -1451,7 +1452,7 @@ class FedAvgReconstructor(GradientReconstructor):
 
                 rec_loss = reconstruction_costs([gradient], input_gradient[i],
                                                 cost_fn=self.config['cost_fn'], indices=self.config['indices'],
-                                                weights=self.config['weights'])
+                                                weights=self.config['weights'], model = self.model)
 
                 if self.config['total_variation'] > 0:
                     tv_loss = TV(x_trial)
@@ -1503,7 +1504,7 @@ class FedAvgReconstructor(GradientReconstructor):
                                 local_steps=self.local_steps, lr=self.local_lr, use_updates=self.use_updates, config=self.config)
             rec_loss = reconstruction_costs([gradient], input_gradient[i],
                                     cost_fn=self.config['cost_fn'], indices=self.config['indices'],
-                                    weights=self.config['weights'])
+                                    weights=self.config['weights'], model = self.model)
             total_loss += rec_loss
         return total_loss
 
@@ -1552,7 +1553,7 @@ def loss_steps(model, inputs, labels, loss_fn=torch.nn.CrossEntropyLoss(), lr=1e
                                                in zip(patched_model.parameters.items(), patched_model_origin.parameters.items()))
     return list(patched_model.parameters.values())
 
-def reconstruction_costs(gradients, input_gradient, cost_fn='l2', indices='def', weights='equal'):
+def reconstruction_costs(gradients, input_gradient, cost_fn='l2', indices='def', weights='equal', model=None):
     """Input gradient is given data."""
     # logger.info("The length of gradients:{}".format(len(gradients)))
     # logger.info("The length of gradients:{}".format(len(input_gradient)))
@@ -1561,6 +1562,20 @@ def reconstruction_costs(gradients, input_gradient, cost_fn='l2', indices='def',
         pass
     elif indices == 'def':
         indices = torch.arange(len(input_gradient))
+    elif indices.startswith('fedcola') and model is not None:
+        to_select = []
+        if 'img_emb' in indices:
+            to_select.append("img_embedding")
+        if 'txt_emb' in indices:
+            to_select.append("txt_embedding")
+        if 'img_block' in indices:
+            to_select.append("img_blocks")
+        if 'txt_block' in indices:
+            to_select.append("txt_blocks")
+        if 'head' in indices:
+            to_select.append("heads")
+
+        indices = select_indices_fedcola(model, select=to_select)
     elif indices == 'batch':
         indices = torch.randperm(len(input_gradient))[:8]
     elif indices == 'topk-1':
