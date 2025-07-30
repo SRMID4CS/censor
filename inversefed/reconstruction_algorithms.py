@@ -407,7 +407,7 @@ class GradientReconstructor():
             logger.info(f"x: {n_x}")
         self.n_trainable = n_z + n_G + n_x + n_noise
 
-    def reconstruct(self, input_data, labels, img_shape=(3, 32, 32), txt_shape=(10,384), dryrun=False, tol=None):
+    def reconstruct(self, input_data, labels, img_shape=(3, 32, 32), txt_shape=(40,384), dryrun=False, tol=None):
         """Reconstruct image from gradient."""
         if torch.is_tensor(input_data[0]):  
             self.input_data = [input_data]
