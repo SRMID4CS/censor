@@ -944,7 +944,7 @@ class GradientReconstructor():
 
             for iteration in range(max_iterations):
                 for trial in range(self.config['restarts']):
-                    losses = [0,0,0,0,0]
+                    losses = [0,0,0,0,0,0]
                     #Group Regularizer
                     if trial == 0 and iteration + 1 == construct_group_mean_at and self.config['group_lazy'] > 0:
                         self.do_group_mean = True
