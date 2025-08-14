@@ -1037,7 +1037,7 @@ class GradientReconstructor():
                                         f.write(recon_sentence)
 
                         if (iteration + 1 == self.max_iterations) or iteration % save_interval == 0:
-                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss:2.4f} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | l2: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | kld: {losses[4]:7.4f}')
+                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss:2.4f} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | l2: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | kld: {losses[4]:7.4f} | patch: {losses[5]:7.4f}')
                             if self.config['z_norm'] > 0:
                                 logger.info(torch.norm(dummy_z[trial], 2).item())
                         if iteration + 1 == max_iterations and self.config['optim'] == 'CMA-ES':
@@ -1173,7 +1173,7 @@ class GradientReconstructor():
                         _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
 
                         if (iteration + 1 == self.gias_iterations) or iteration % save_interval == 0:
-                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss.item():2.4E} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | l2: {losses[2]:7.4f} | gr: {losses[3]:7.4f}')
+                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss.item():2.4E} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | l2: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | patch: {losses[4]:7.4f}')
 
                     # Unload G to CPU
                     # for k in range(self.num_images):
@@ -1346,9 +1346,9 @@ class GradientReconstructor():
                         losses[4] = KLD.item()
                 total_loss += rec_loss
                 if self.config['patch_prior'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
-                    patch_prior_loss_value = patch_prior_loss_single_image(x_trial, patch_size=self.config['patch_size'])
+                    patch_prior_loss_value = patch_prior_loss(x_trial, patch_size=self.config['patch_size'])
                     rec_loss += patch_prior_loss_value * self.config['patch_prior']
-                    losses[4] = patch_prior_loss_value.item()
+                    losses[5] = patch_prior_loss_value.item()
             if self.config['optim'] != "CMA-ES":
                 total_loss.backward()
             return total_loss
@@ -1481,7 +1481,7 @@ class FedAvgReconstructor(GradientReconstructor):
                     rec_loss += self.config['group_lazy'] * group_loss
                     losses[3] = group_loss
                 if self.config['patch_prior'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
-                    patch_prior_loss_value = patch_prior_loss_single_image(x_trial, patch_size=self.config['patch_size'])
+                    patch_prior_loss_value = patch_prior_loss(x_trial, patch_size=self.config['patch_size'])
                     rec_loss += patch_prior_loss_value * self.config['patch_prior']
                     losses[4] = patch_prior_loss_value.item()
 
@@ -1711,44 +1711,5 @@ def patch_prior_loss(x_hat, patch_size=16):
     # Vertical (columns)
     for k in range(1, x_hat.shape[3] // patch_size):
         loss_v += torch.norm(x_hat[:, :, :, k*patch_size] - x_hat[:, :, :, k*patch_size - 1], p=2)**2
-    
-    return loss_h + loss_v
-
-def patch_prior_loss_single_image(x, patch_size=16):
-    """
-    Patch prior loss for a single image x of shape [C, H, W].
-    Enforces smoothness at patch boundaries.
-    
-    Args:
-        x: torch.Tensor, shape [C, H, W]
-        patch_size: int, the patch size P (e.g., 16 for ViT-B/16)
-    
-    Returns:
-        torch.Tensor: scalar loss
-    """
-    if len(x.shape) != 3:
-        raise ValueError("Input x must be [C, H, W] for a single image.")
-    
-    C, H, W = x.shape
-    loss_h = 0.0  # Horizontal boundaries (along height)
-    loss_v = 0.0  # Vertical boundaries (along width)
-    
-    # Horizontal: differences at row boundaries between patches
-    num_boundaries_h = H // patch_size - 1
-    for k in range(1, num_boundaries_h + 1):
-        # Row just above boundary: index P*k - 1
-        row_above = x[:, (k * patch_size) - 1, :]  # [C, W]
-        # Row at boundary: index P*k
-        row_below = x[:, k * patch_size, :]        # [C, W]
-        loss_h += torch.norm(row_below - row_above, p=2) ** 2
-    
-    # Vertical: differences at column boundaries between patches
-    num_boundaries_v = W // patch_size - 1
-    for k in range(1, num_boundaries_v + 1):
-        # Column just left of boundary: index P*k - 1
-        col_left = x[:, :, (k * patch_size) - 1]   # [C, H]
-        # Column at boundary: index P*k
-        col_right = x[:, :, k * patch_size]        # [C, H]
-        loss_v += torch.norm(col_right - col_left, p=2) ** 2
     
     return loss_h + loss_v
