@@ -83,6 +83,7 @@ parser.add_argument('--checkpoint_path', default='', type=str, help='Local learn
 parser.add_argument('--gan', default='stylegan2', type=str, help='GAN model option:[stylegan2, biggan]')
 parser.add_argument('--config', default='./config_stylegan2', type=str, help='Path of selected config file.')
 
+parser.add_argument('--patch_size', default=16, type=int, help='Patch size of the model. Auto inferred from model name if not set.')
 
 # Add Args for FedCola
 
@@ -188,6 +189,16 @@ if __name__ == "__main__":
 
     logger.info("Model loaded: {}".format(model))
 
+    if '8' in args.model_name:
+        args.patch_size = 8
+    elif '16' in args.model_name:
+        args.patch_size = 16
+    elif '32' in args.model_name:
+        args.patch_size = 32
+    else:
+        args.patch_size = 16
+        logger.warning("Patch size not set, using default 16.")
+
     try:
         log_model_dropout_rates(model, logger)
     except Exception as e:
@@ -291,6 +302,8 @@ if __name__ == "__main__":
                         cma_budget = config['cma_budget'],
                         num_sample = config['num_sample'],
                         KLD = config['KLD'],
+                        patch_prior=config['patch_prior'],
+                        patch_size=args.patch_size,
                         gias_lr=config['gias_lr'],
                         gias_iterations=config['gias_iterations'],
                         model=config['model'],
@@ -307,6 +320,8 @@ if __name__ == "__main__":
                         max_iterations=config['max_iterations'],
                         total_variation=config['total_variation'],
                         bn_stat=config['bn_stat'],
+                        patch_prior=config['patch_prior'],
+                        patch_size=args.patch_size,
                         image_norm=config['image_norm'],
                         z_norm=args.z_norm,
                         group_lazy=config['group_lazy'],

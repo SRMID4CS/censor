@@ -89,6 +89,8 @@ DEFAULT_CONFIG = dict(signed=False,
                       geiping=False,
                       cma_budget=0,
                       KLD=0,
+                      patch_prior=0,
+                      patch_size=16,
                       #LR pace for training
                       lr_same_pace=False,
                       project=False,
@@ -1313,7 +1315,7 @@ class GradientReconstructor():
                                                 cost_fn=self.config['cost_fn'], indices=self.config['indices'],
                                                 weights=self.config['weights'], model = self.model)
 
-                if self.config['total_variation'] > 0:
+                if self.config['total_variation'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
                     tv_loss = TV(x_trial)
                     rec_loss += self.config['total_variation'] * tv_loss
                     losses[0] = tv_loss.item()
@@ -1343,6 +1345,10 @@ class GradientReconstructor():
                         rec_loss += self.config['KLD'] * KLD
                         losses[4] = KLD.item()
                 total_loss += rec_loss
+                if self.config['patch_prior'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
+                    patch_prior_loss_value = patch_prior_loss_single_image(x_trial, patch_size=self.config['patch_size'])
+                    rec_loss += patch_prior_loss_value * self.config['patch_prior']
+                    losses[4] = patch_prior_loss_value.item()
             if self.config['optim'] != "CMA-ES":
                 total_loss.backward()
             return total_loss
@@ -1454,7 +1460,7 @@ class FedAvgReconstructor(GradientReconstructor):
                                                 cost_fn=self.config['cost_fn'], indices=self.config['indices'],
                                                 weights=self.config['weights'], model = self.model)
 
-                if self.config['total_variation'] > 0:
+                if self.config['total_variation'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
                     tv_loss = TV(x_trial)
                     rec_loss += self.config['total_variation'] * tv_loss
                     losses[0] = tv_loss
@@ -1474,6 +1480,11 @@ class FedAvgReconstructor(GradientReconstructor):
                     group_loss =  torch.norm(x_trial - self.group_mean, 2) / (imsize_dict[self.config['dataset']] ** 2)
                     rec_loss += self.config['group_lazy'] * group_loss
                     losses[3] = group_loss
+                if self.config['patch_prior'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
+                    patch_prior_loss_value = patch_prior_loss_single_image(x_trial, patch_size=self.config['patch_size'])
+                    rec_loss += patch_prior_loss_value * self.config['patch_prior']
+                    losses[4] = patch_prior_loss_value.item()
+
                 if self.config['z_norm'] > 0:
                     if self.dummy_z != None:
                         z_loss = torch.norm(self.dummy_z, 2)
@@ -1675,3 +1686,69 @@ def reconstruction_costs(gradients, input_gradient, cost_fn='l2', indices='def',
         # Accumulate final costs
         total_costs += costs
     return total_costs / len(gradients)
+
+
+def patch_prior_loss(x_hat, patch_size=16):
+    """
+    R_patch: Sum differences on horizontal/vertical patch edges.
+    x_hat: [N, C, H, W]
+    """
+    loss_h = 0.0
+    loss_v = 0.0
+    num_patches_h = x_hat.shape[2] // patch_size - 1
+    num_patches_w = x_hat.shape[3] // patch_size - 1
+    
+    for k in range(1, num_patches_h + 1):
+        edge_left = x_hat[:, :, (k-1)*patch_size : k*patch_size, :]
+        edge_right = x_hat[:, :, k*patch_size : (k+1)*patch_size, :]
+        loss_h += torch.norm(edge_right[:, :, 0] - edge_left[:, :, -1], p=2)**2  # Last row of left vs first of right? Wait, per Eq: full patch diff? Adjust.
+    
+    # Wait, Eq.8 is || x[:, P*k:, :] - x[:, P*k-1:, :] || but sliced correctly for borders.
+    # Corrected: For horizontal (rows):
+    for k in range(1, x_hat.shape[2] // patch_size):
+        loss_h += torch.norm(x_hat[:, :, k*patch_size, :] - x_hat[:, :, k*patch_size - 1, :], p=2)**2
+    
+    # Vertical (columns)
+    for k in range(1, x_hat.shape[3] // patch_size):
+        loss_v += torch.norm(x_hat[:, :, :, k*patch_size] - x_hat[:, :, :, k*patch_size - 1], p=2)**2
+    
+    return loss_h + loss_v
+
+def patch_prior_loss_single_image(x, patch_size=16):
+    """
+    Patch prior loss for a single image x of shape [C, H, W].
+    Enforces smoothness at patch boundaries.
+    
+    Args:
+        x: torch.Tensor, shape [C, H, W]
+        patch_size: int, the patch size P (e.g., 16 for ViT-B/16)
+    
+    Returns:
+        torch.Tensor: scalar loss
+    """
+    if len(x.shape) != 3:
+        raise ValueError("Input x must be [C, H, W] for a single image.")
+    
+    C, H, W = x.shape
+    loss_h = 0.0  # Horizontal boundaries (along height)
+    loss_v = 0.0  # Vertical boundaries (along width)
+    
+    # Horizontal: differences at row boundaries between patches
+    num_boundaries_h = H // patch_size - 1
+    for k in range(1, num_boundaries_h + 1):
+        # Row just above boundary: index P*k - 1
+        row_above = x[:, (k * patch_size) - 1, :]  # [C, W]
+        # Row at boundary: index P*k
+        row_below = x[:, k * patch_size, :]        # [C, W]
+        loss_h += torch.norm(row_below - row_above, p=2) ** 2
+    
+    # Vertical: differences at column boundaries between patches
+    num_boundaries_v = W // patch_size - 1
+    for k in range(1, num_boundaries_v + 1):
+        # Column just left of boundary: index P*k - 1
+        col_left = x[:, :, (k * patch_size) - 1]   # [C, H]
+        # Column at boundary: index P*k
+        col_right = x[:, :, k * patch_size]        # [C, H]
+        loss_v += torch.norm(col_right - col_left, p=2) ** 2
+    
+    return loss_h + loss_v
