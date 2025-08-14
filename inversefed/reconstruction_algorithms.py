@@ -1019,7 +1019,7 @@ class GradientReconstructor():
                                     torchvision.utils.save_image(torch.clamp(imgs.detach().clone() * ds + dm, 0, 1)[num_img:num_img + 1, ...], os.path.join(dir_path, f'{num_img}_trial_{trial}_it_{iteration}.png'))
                         if self.config['save_intermediate_at_txt'] > 0 and (iteration % self.config['save_intermediate_at_txt'] == 0):
                             logger.info(f'Saving intermediate TXT at iteration {iteration}...')
-                            if self.config['model'] == 'FedCola_IMG_TXT':
+                            if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_text'] != 'ground_truth':
                                 for num_txt in range(self.num_images):
                                     recon_sentence = de_embed_text(Ys[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                                     dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')

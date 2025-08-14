@@ -673,7 +673,7 @@ if __name__ == "__main__":
                 if config['model'] == 'FedCola_IMG' or config['model'] == 'FedCola_IMG_TXT':
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
 
-                if config['model'] == 'FedCola_TXT' or config['model'] == 'FedCola_IMG_TXT':
+                if config['model'] == 'FedCola_TXT' or (config['model'] == 'FedCola_IMG_TXT' and config['init_text'] != 'ground_truth'):
                     # Save the text after deembedding
                     sentence_token_ids = ground_truth[j:j + 1, ...] if config['model'] == 'FedCola_TXT' else labels[j:j + 1, ...]
                     # convert to text
