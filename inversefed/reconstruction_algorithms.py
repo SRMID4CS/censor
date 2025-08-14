@@ -1690,26 +1690,24 @@ def reconstruction_costs(gradients, input_gradient, cost_fn='l2', indices='def',
 
 def patch_prior_loss(x_hat, patch_size=16):
     """
-    R_patch: Sum differences on horizontal/vertical patch edges.
+    Patch prior (GradViT): penalize discontinuities at patch boundaries.
+    Uses squared L2 across channels at each boundary pixel.
     x_hat: [N, C, H, W]
     """
-    loss_h = 0.0
-    loss_v = 0.0
-    num_patches_h = x_hat.shape[2] // patch_size - 1
-    num_patches_w = x_hat.shape[3] // patch_size - 1
-    
-    for k in range(1, num_patches_h + 1):
-        edge_left = x_hat[:, :, (k-1)*patch_size : k*patch_size, :]
-        edge_right = x_hat[:, :, k*patch_size : (k+1)*patch_size, :]
-        loss_h += torch.norm(edge_right[:, :, 0] - edge_left[:, :, -1], p=2)**2  # Last row of left vs first of right? Wait, per Eq: full patch diff? Adjust.
-    
-    # Wait, Eq.8 is || x[:, P*k:, :] - x[:, P*k-1:, :] || but sliced correctly for borders.
-    # Corrected: For horizontal (rows):
-    for k in range(1, x_hat.shape[2] // patch_size):
-        loss_h += torch.norm(x_hat[:, :, k*patch_size, :] - x_hat[:, :, k*patch_size - 1, :], p=2)**2
-    
-    # Vertical (columns)
-    for k in range(1, x_hat.shape[3] // patch_size):
-        loss_v += torch.norm(x_hat[:, :, :, k*patch_size] - x_hat[:, :, :, k*patch_size - 1], p=2)**2
-    
-    return loss_h + loss_v
+    N, C, H, W = x_hat.shape
+    device = x_hat.device
+
+    loss = x_hat.new_zeros(())
+    # Horizontal boundaries (rows at k*patch_size)
+    if H >= patch_size:
+        h_idx = torch.arange(patch_size, H, patch_size, device=device)
+        dh = x_hat[:, :, h_idx, :] - x_hat[:, :, h_idx - 1, :]
+        loss = loss + dh.pow(2).sum()
+
+    # Vertical boundaries (cols at k*patch_size)
+    if W >= patch_size:
+        w_idx = torch.arange(patch_size, W, patch_size, device=device)
+        dv = x_hat[:, :, :, w_idx] - x_hat[:, :, :, w_idx - 1]
+        loss = loss + dv.pow(2).sum()
+
+    return loss
