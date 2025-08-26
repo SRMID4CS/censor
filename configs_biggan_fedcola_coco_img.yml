@@ -6,20 +6,28 @@
   indices : 'def'      # decide which part of gradients to be involved in the final gradients match loss.
   weights : 'equal'    # weight of every graident scalar's matching loss
   init : 'randn'     # how we initial the original latent code.
-  model : 'ResNet18'   # FL model
+  init_text : 'randn'     # how we initial the original latent code of text embedding.
+  model : 'FedCola_IMG'   #FL model ['FedCola_IMG', 'FedCola_TXT', 'FedCola_IMG_TXT']
   restarts : 4
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 10     # the number of experiments / inverted images
-  target_id : 0
+  num_exp : 1     # the number of experiments / inverted images
+  target_id : 10
   lr : 0.03
   total_variation : 0.0001     #the coefficient of total variation
   bn_stat : 0       #choose if we use bn statistic to regularizer
   image_norm : 0.000001    #the coefficient of norm regularizer
   group_lazy : 0    #choose if we use group lazy regularization
 
-  max_iterations : 1000   #Maximum number of iterations for latent reconstruction.
+  max_iterations : 100   #Maximum number of iterations for latent reconstruction.
   
+  use_saved_models : False  # whether to use saved models or not
+  model_load_dir : '/home/ubuntu/mnt-disk/results/fedcola/exp_name'  # the directory to load saved models from
+  save_model : False  # whether to save the model or not
+
+  save_intermediate_at_img : 10  # the interval at which to save intermediate results, -1 for no intermediate saving
+  save_intermediate_at_txt : 10  # the interval at which to save intermediate results, -1 for no intermediate saving
+
   #For GIAS
   gias_iterations : 8000  #Maximum number of gias iterations for reconstruction.
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate 
@@ -27,12 +35,12 @@
   # For input data
   generative_model : 'BigGAN'
   gen_dataset : 'ImageNet64'
-  dataset : 'IMAGENET_IO'
-  data_path : '/depot/ninghui/data/imagenet/val'    # specify your dataset path
+  dataset : 'Coco_img'   # ['Coco', 'Coco_img', 'Coco_txt']     
+  data_path : 'N/A'  # specify your dataset path
 
   #For output data
-  exp_name : 'ex1_biggan_imagenet'   #Same latent space search
-  output_dir : '/scratch/gilbreth/zhan4057/gradinv/results_biggan/'
+  exp_name : 'ex1_biggan_fedcola_img'   #Same latent space search
+  output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
   #params for algorithm choice
   gifd : true
   gias : false
@@ -62,15 +70,15 @@
   lr_same_pace: false 
 
   # training epoch
-  train_epochs: 100
-  our_num_tries : 20
+  train_epochs: 3
+  our_num_tries : 10
 
   #Defense parameter
-  defense_method : 'representation'
+  defense_method : None
   defense_setting : 
     noise : null
-    clipping : 4
-    compression : 20
+    clipping : null
+    compression : null
     representation : null
     orthogonal : null
 
