@@ -3,7 +3,7 @@
   optim : 'GAN_free'    #optim method, ['GAN_based', 'GAN_free']
   cost_fn : 'sim_cmpr0'   #the type of loss function 
   set_seed :       # random seed. Following geiping et. al., we do not give random seed for GAN-free methods.
-  indices : 'def'      #decide which part of gradients to be involved in the final gradients match loss.
+  indices : 'def' # 'fedcola_img_block'      #decide which part of gradients to be involved in the final gradients match loss.
   weights : 'equal'    #weight of every graident scalar's matching loss
   init : 'randn'     #how we initial the original latent code.
   init_text : 'randn'    #how we initial the original latent code of text embedding.
@@ -12,7 +12,7 @@
 
   num_images : 1   # the number of images to reconstruct at a batch
   num_exp : 1     # the number of experiments
-  target_id : 20 # the target image id + iterative incrementation of id
+  target_id : 10 # the target image id + iterative incrementation of id
   target_id_increment : 5 # the incrementation of target image id
   unrelated_target_offset : -1 # the offset for unrelated target
   lr : 0.1            #learning rate for Yin et al.
@@ -26,7 +26,7 @@
   max_iterations : 24000    #Maximum number of iterations for reconstruction.
 
   use_saved_models : False  # whether to use saved models or not
-  model_load_dir : '/home/ubuntu/mnt-disk/results/fedcola/exp_name'  # the directory to load saved models from
+  model_load_dir : '/home/ubuntu/mnt-disk/repos/FedCola/results/FedCola/FedCola_250805_023340'  # the directory to load saved models from
 
   save_intermediate_at_img : 2000  # the interval at which to save intermediate results, -1 for no intermediate saving
   save_intermediate_at_txt : 100  # the interval at which to save intermediate results, -1 for no intermediate saving
@@ -48,7 +48,7 @@
   geiping : true
   yin : false
 
-  train_epochs: 1
+  train_epochs: 2
   our_num_tries : 10
   #Defense parameter
   defense_method : None
