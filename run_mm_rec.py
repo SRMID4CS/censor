@@ -561,7 +561,7 @@ if __name__ == "__main__":
                 file_name = item[0]
                 output = item[1]
                 stats = item[2]
-                label_best = item[4]
+                label_best = item[3]
 
                 if file_name == "Best_layer_num":
                     Best_layer_num = int(output) 

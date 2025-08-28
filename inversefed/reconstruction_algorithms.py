@@ -529,7 +529,7 @@ class GradientReconstructor():
                 _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
                 stats_yin = {}
                 stats_yin['opt'] = best_score
-                ans.append(['Yin'] + [x_best, stats_yin])
+                ans.append(['Yin'] + [x_best, stats_yin, label_best])
             
             if self.config['geiping']:
                 self.config['cost_fn'] = 'sim_cmpr0'
