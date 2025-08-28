@@ -559,8 +559,7 @@ class GradientReconstructor():
             self.noises = deepcopy(self.initial_noises)
         elif self.generative_model_name in ['BigGAN']:
             if labels is None:
-                # random 1 hot label 1000 classes only 3 hot (assuming only 3 object classes in one batch)
-                self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (3,)), num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
+                self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
             else:
                 self.ys = [torch.nn.functional.one_hot(labels, num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
 
@@ -742,7 +741,7 @@ class GradientReconstructor():
                 losses = [0, 0, 0, 0, 0]  
                 optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels, losses)
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels[trial], losses)
                 rec_loss = closure()
 
                 optimizer.step()
