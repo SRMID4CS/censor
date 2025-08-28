@@ -860,18 +860,18 @@ class GradientReconstructor():
 
         if G:   #For GIAS
             logger.info(f'Choosing optimal G... : {optimal_index}')
-            return  G[optimal_index], scores[optimal_index].item(), x[optimal_index].clone(), None
+            return  G[optimal_index], scores[optimal_index].item(), x[optimal_index].clone(), None, _labels[optimal_index] if _labels is not None else None
         
         
         if self.generative_model_name in ['stylegan2_io']:
             logger.info(f'Choosing optimal z and noise... : {optimal_index}')
-            return dummy_z[optimal_index].detach().clone(), scores[optimal_index].item(), x[optimal_index].clone(), self.noises[optimal_index], _labels[optimal_index]
+            return dummy_z[optimal_index].detach().clone(), scores[optimal_index].item(), x[optimal_index].clone(), self.noises[optimal_index], _labels[optimal_index] if _labels is not None else None
         elif self.generative_model_name in ['BigGAN']:
             logger.info(f'Choosing optimal z and ys... : {optimal_index}')
-            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), self.ys[optimal_index], _labels[optimal_index]
+            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), self.ys[optimal_index], _labels[optimal_index] if _labels is not None else None
         elif self.generative_model_name:
             logger.info(f'Choosing optimal z... : {optimal_index}')
-            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), None, _labels[optimal_index]
+            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), None, _labels[optimal_index] if _labels is not None else None
         else:
             logger.info(f'Choosing optimal x... : {optimal_index}')
             return None, scores[optimal_index].item(), x[optimal_index].clone(), None, _labels[optimal_index].clone() if _labels is not None else None
