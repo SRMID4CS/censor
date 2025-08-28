@@ -526,7 +526,7 @@ class GradientReconstructor():
                 self.config['optim'] = 'adam'
                 # self.max_iterations = 1
                 _x = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations, txt_shape=txt_shape)
-                _, best_score, x_best, _ = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
+                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
                 stats_yin = {}
                 stats_yin['opt'] = best_score
                 ans.append(['Yin'] + [x_best, stats_yin])
@@ -538,7 +538,7 @@ class GradientReconstructor():
                 _x, optimized_labels = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations, txt_shape=txt_shape)
                 if self.config['model'] == 'FedCola_IMG_TXT':
                     infer_labels = optimized_labels
-                _, best_score, x_best, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
+                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
                 stats_gp = {}
                 stats_gp['opt'] = best_score
                 ans.append(['geiping'] + [x_best, stats_gp, label_best])
@@ -809,14 +809,14 @@ class GradientReconstructor():
             #_x is not in the real image space.
             #TO DO: compute score
             stats = {}
-            optimal_z, stats['opt'], opt_img, opt_ys  = self.choose_optimal(_x, labels, dummy_z, dryrun=dryrun)
+            optimal_z, stats['opt'], opt_img, _, opt_label = self.choose_optimal(_x, labels, dummy_z, dryrun=dryrun)
             if stats['opt'] < best_layer_score['opt']:  #save the best layer output
                 # best_layer_name = 'Best_' + prefix + 'output' 
                 # best_layer_num = i
                 best_layer_img = opt_img.detach()
                 best_layer_score = dict(stats)
-                best_layer_label = opt_ys.detach() if opt_ys is not None else None
-            res[i] = [prefix + f'layer{i}', opt_img.detach(), stats, opt_ys.detach() if opt_ys is not None else None]
+                best_layer_label = opt_label.detach() if opt_label is not None else None
+            res[i] = [prefix + f'layer{i}', opt_img.detach(), stats, opt_label.detach() if opt_label is not None else None]
             res.append(['Best_' + prefix + 'first_' + str(i) + '_layer' , best_layer_img, best_layer_score, best_layer_label])
 
         return res
