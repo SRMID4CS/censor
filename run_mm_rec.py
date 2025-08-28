@@ -555,12 +555,13 @@ if __name__ == "__main__":
 
             #Record the best layer if GIFD is applied
             Best_layer_num = -1
+            logger.info("Results obtained: {}".format(result.shape if isinstance(result, torch.Tensor) else len(result)))
             for idx, item in enumerate(result):
                 # Compute stats and save to a table:
                 file_name = item[0]
                 output = item[1]
                 stats = item[2]
-                label_best = item[3]
+                label_best = item[4]
 
                 if file_name == "Best_layer_num":
                     Best_layer_num = int(output) 
