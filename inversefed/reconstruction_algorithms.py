@@ -38,7 +38,8 @@ imsize_dict = {
     'CIFAR10':32, 'CIFAR100':32, 'FFHQ':512, 'FFHQ64':64,
     'CA256': 256, 'CA128': 128, 'CA64': 64, 'CA32': 32, 
     'PERM64': 64, 'PERM32': 32, 'IMAGENET_IO' : 64, 'OOD_IMAGENET' : 64,
-    'OOD_FFHQ' : 64
+    'OOD_FFHQ' : 64,
+    'Coco' : 224, 'Coco_img' : 224,
 }
 
 save_interval=100
