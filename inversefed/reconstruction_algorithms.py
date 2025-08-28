@@ -460,6 +460,7 @@ class GradientReconstructor():
             elif self.config['model'] == 'FedCola_IMG_TXT':
                 self.images = self._init_images(img_shape)
                 self.text_embeds = self._init_text_embeds(txt_shape)
+                infer_labels = self._init_text_embeds(txt_shape)
             else:
                 self.images = self._init_images(img_shape)
             
@@ -475,10 +476,10 @@ class GradientReconstructor():
                 # self.image_project = False
                 dummy_z_ggl = [z.detach().clone().to(self.device).requires_grad_(True) for z in dummy_z]
                 _x = self.reconstruct_by_latentCode(dummy_z_ggl, infer_labels, img_shape, dryrun, self.cma_iterations)
-                _, best_score, x_best, _ = self.choose_optimal(_x, infer_labels, dummy_z=dummy_z_ggl, dryrun=dryrun)
+                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dummy_z=dummy_z_ggl, dryrun=dryrun)
                 stats_ggl = {}
                 stats_ggl['opt'] = best_score
-                ans.append(['ggl'] + [x_best, stats_ggl])
+                ans.append(['ggl'] + [x_best, stats_ggl, label_best])
 
                 self.config['total_variation'] = old_TV
 
@@ -492,14 +493,14 @@ class GradientReconstructor():
                 #latent space search
                 dummy_z_gias = [z.detach().clone().to(self.device).requires_grad_(True) for z in dummy_z]
                 _x = self.reconstruct_by_latentCode(dummy_z_gias, infer_labels, img_shape, dryrun, self.max_iterations)
-                optimal_z, _, _, optimal_val = self.choose_optimal(_x, infer_labels, dummy_z=dummy_z_gias, dryrun=dryrun)
+                optimal_z, _, _, optimal_val, label_best = self.choose_optimal(_x, infer_labels, dummy_z=dummy_z_gias, dryrun=dryrun)
                 # logger.info("optimal z's shape:{} _x shape:{}".format(optimal_z.shape, _x[0].shape))
                 #parameter space search
                 if self.generative_model_name in ['stylegan2_io']:
-                    ans.append(['gias'] + list(self.gias_param_search(optimal_z, _x, infer_labels, optimal_noise=optimal_val)))
+                    ans.append(['gias'] + list(self.gias_param_search(optimal_z, _x, infer_labels, optimal_noise=optimal_val)) + [label_best])
                 else:
-                    ans.append(['gias'] + list(self.gias_param_search(optimal_z, _x, infer_labels, optimal_ys=optimal_val)))
-                
+                    ans.append(['gias'] + list(self.gias_param_search(optimal_z, _x, infer_labels, optimal_ys=optimal_val)) + [label_best])
+
             #GIFD
             if self.config['gifd']:
                 self.config['cost_fn'] = self.gifd_loss 
@@ -595,7 +596,13 @@ class GradientReconstructor():
             
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
-            optimizer = torch.optim.Adam(var_list, lr=learning_rate)
+            if self.config['model'] == 'FedCola_IMG_TXT':
+                to_optimize = var_list.copy().append(labels[trial])
+            else:
+                to_optimize = var_list.copy()
+
+            optimizer = torch.optim.Adam(to_optimize, lr=learning_rate)
+
             ps = SphericalOptimizer([dummy_z[trial]] + self.noises[trial])  #pgd
             pbar = tqdm(range(steps))
 
@@ -707,6 +714,9 @@ class GradientReconstructor():
                 optim_param =  [self.gen_outs[trial][-1]]
                 prev_gen_out = torch.ones(self.gen_outs[trial][-1].shape, device=self.gen_outs[trial][-1].device) * self.gen_outs[trial][-1]
             
+            if self.config['model'] == 'FedCola_IMG_TXT':
+                optim_param += [labels[trial]]
+
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
             optimizer = torch.optim.Adam(optim_param, lr=learning_rate)
@@ -782,8 +792,9 @@ class GradientReconstructor():
 
         logger.info("-------------Start intermidiate space search---------------")
         best_layer_img = None
+        best_layer_label = None
         best_layer_score = {'opt':np.inf}
-        res = [[prefix + f'layer{i}', None, {'opt':-1}] for i in range(len(self.config["steps"]))]
+        res = [[prefix + f'layer{i}', None, {'opt':-1}, None] for i in range(len(self.config["steps"]))]
 
         for i, steps in enumerate(self.config["steps"]):
             begin_layer = i + self.config['start_layer']
@@ -798,14 +809,15 @@ class GradientReconstructor():
             #_x is not in the real image space.
             #TO DO: compute score
             stats = {}
-            optimal_z, stats['opt'], opt_img, _  = self.choose_optimal(_x, labels, dummy_z, dryrun=dryrun)
+            optimal_z, stats['opt'], opt_img, opt_ys  = self.choose_optimal(_x, labels, dummy_z, dryrun=dryrun)
             if stats['opt'] < best_layer_score['opt']:  #save the best layer output
                 # best_layer_name = 'Best_' + prefix + 'output' 
                 # best_layer_num = i
                 best_layer_img = opt_img.detach()
                 best_layer_score = dict(stats)
-            res[i] = [prefix + f'layer{i}', opt_img.detach(), stats]
-            res.append(['Best_' + prefix + 'first_' + str(i) + '_layer' , best_layer_img, best_layer_score])
+                best_layer_label = opt_ys.detach() if opt_ys is not None else None
+            res[i] = [prefix + f'layer{i}', opt_img.detach(), stats, opt_ys.detach() if opt_ys is not None else None]
+            res.append(['Best_' + prefix + 'first_' + str(i) + '_layer' , best_layer_img, best_layer_score, best_layer_label])
 
         return res
 
@@ -853,16 +865,16 @@ class GradientReconstructor():
         
         if self.generative_model_name in ['stylegan2_io']:
             logger.info(f'Choosing optimal z and noise... : {optimal_index}')
-            return dummy_z[optimal_index].detach().clone(), scores[optimal_index].item(), x[optimal_index].clone(), self.noises[optimal_index]
+            return dummy_z[optimal_index].detach().clone(), scores[optimal_index].item(), x[optimal_index].clone(), self.noises[optimal_index], _labels[optimal_index]
         elif self.generative_model_name in ['BigGAN']:
             logger.info(f'Choosing optimal z and ys... : {optimal_index}')
-            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), self.ys[optimal_index]
+            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), self.ys[optimal_index], _labels[optimal_index]
         elif self.generative_model_name:
             logger.info(f'Choosing optimal z... : {optimal_index}')
-            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), None
+            return dummy_z[optimal_index].detach().clone(),  scores[optimal_index].item(), x[optimal_index].clone(), None, _labels[optimal_index]
         else:
             logger.info(f'Choosing optimal x... : {optimal_index}')
-            return None, scores[optimal_index].item(), x[optimal_index].clone(), _labels[optimal_index].clone() if _labels is not None else None
+            return None, scores[optimal_index].item(), x[optimal_index].clone(), None, _labels[optimal_index].clone() if _labels is not None else None
 
     def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500, txt_shape=(40,384)):
         self.model.eval()
@@ -897,12 +909,18 @@ class GradientReconstructor():
 
                 if self.G:
                     self.G.to(self.device)
+                    if self.config['model'] == 'FedCola_IMG_TXT' and init_txt != 'ground_truth':
+                        _labels[trial].requires_grad = True
+                        to_optimize = [dummy_z[trial], _labels[trial]]
+                    else:
+                        to_optimize = [dummy_z[trial]]
+
                     if self.config['optim'] == 'adam':
-                        optimizer[trial] = torch.optim.Adam([dummy_z[trial]], lr=self.config['lr'])
+                        optimizer[trial] = torch.optim.Adam(to_optimize, lr=self.config['lr'])
                     elif self.config['optim'] == 'sgd':  # actually gd
-                        optimizer[trial] = torch.optim.SGD([dummy_z[trial]], lr=0.01, momentum=0.9, nesterov=True)
+                        optimizer[trial] = torch.optim.SGD(to_optimize, lr=0.01, momentum=0.9, nesterov=True)
                     elif self.config['optim'] == 'LBFGS':
-                        optimizer[trial] = torch.optim.LBFGS([dummy_z[trial]])
+                        optimizer[trial] = torch.optim.LBFGS(to_optimize)
                     elif self.config['optim'] == 'CMA-ES':
                         parametrization = ng.p.Array(init=dummy_z[trial].cpu().detach().numpy())
                         optimizer[trial] = ng.optimizers.registry['CMA'](parametrization=parametrization, budget=self.config['cma_budget'])
@@ -1197,7 +1215,7 @@ class GradientReconstructor():
             for k in range(self.num_images):
                 self.G_list2d[trial][k].cpu()
 
-        self.G, stats['opt'], x_optimal, _ = self.choose_optimal(_x, labels, G=self.G_list2d)
+        self.G, stats['opt'], x_optimal, _, label_optimal = self.choose_optimal(_x, labels, G=self.G_list2d)
         #the returned self.G is a list for a batch of imgs
 
 
@@ -1491,6 +1509,12 @@ class FedAvgReconstructor(GradientReconstructor):
                         z_loss = torch.norm(self.dummy_z, 2)
                         rec_loss += 1e-3 * z_loss
                 total_loss += rec_loss
+
+                # if self.config['CLIP_loss'] > 0:
+                #     # CLIP loss
+                #     clip_loss = self.clip_loss_fn(x_trial, label)
+                #     total_loss += self.config['CLIP_loss'] * clip_loss
+
             total_loss.backward()
             return total_loss
         return closure
