@@ -741,7 +741,7 @@ class GradientReconstructor():
                 losses = [0, 0, 0, 0, 0]  
                 optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels[trial], losses)
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels, losses)
                 rec_loss = closure()
 
                 optimizer.step()
