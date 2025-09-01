@@ -600,6 +600,7 @@ class GradientReconstructor():
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
             if self.config['model'] == 'FedCola_IMG_TXT':
+                labels.requires_grad = True
                 to_optimize = var_list.copy().append(labels[trial])
             else:
                 to_optimize = var_list.copy()
@@ -623,8 +624,14 @@ class GradientReconstructor():
                 #-                      Calculate loss                           -#
                 losses = [0, 0, 0, 0, 0]  
                 optimizer.zero_grad()
-                
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels, losses)
+
+                if self.config['model'] == 'FedCola_IMG_TXT':
+                    labels.requires_grad = True
+                    labels_opt = labels[trial]
+                else:
+                    labels_opt = labels
+
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses)
                 rec_loss = closure()
 
                 optimizer.step()
@@ -718,6 +725,7 @@ class GradientReconstructor():
                 prev_gen_out = torch.ones(self.gen_outs[trial][-1].shape, device=self.gen_outs[trial][-1].device) * self.gen_outs[trial][-1]
             
             if self.config['model'] == 'FedCola_IMG_TXT':
+                labels.requires_grad = True
                 optim_param += [labels[trial]]
 
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
@@ -741,7 +749,14 @@ class GradientReconstructor():
                 losses = [0, 0, 0, 0, 0]  
                 optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels, losses)
+                
+                if self.config['model'] == 'FedCola_IMG_TXT':
+                    labels.requires_grad = True
+                    labels_opt = labels[trial]
+                else:
+                    labels_opt = labels
+
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses)
                 rec_loss = closure()
 
                 optimizer.step()
@@ -966,6 +981,11 @@ class GradientReconstructor():
 
             for iteration in range(max_iterations):
                 for trial in range(self.config['restarts']):
+                    if self.config['model'] == 'FedCola_IMG_TXT':
+                        _labels.requires_grad = True
+                        labels_opt = _labels[trial]
+                    else:
+                        labels_opt = _labels
                     losses = [0,0,0,0,0,0]
                     #Group Regularizer
                     if trial == 0 and iteration + 1 == construct_group_mean_at and self.config['group_lazy'] > 0:
@@ -1004,7 +1024,7 @@ class GradientReconstructor():
                         loss_detail = []
                         for i in range(self.num_samples):
                             self.dummy_z = torch.Tensor(ng_data[i].value).to(self.device)
-                            closure = self._gradient_closure(optimizer[trial], _x_gen[i], self.input_data, labels, losses)
+                            closure = self._gradient_closure(optimizer[trial], _x_gen[i], self.input_data, labels_opt, losses)
                             rec_loss = closure()
                             loss.append(rec_loss.item())
                             loss_detail.append(losses)   #record every ask's losses
@@ -1013,17 +1033,13 @@ class GradientReconstructor():
                         for z, l in zip(ng_data, loss):
                             optimizer[trial].tell(z, l)
                     elif self.G:
-                        closure = self._gradient_closure(optimizer[trial], _x[trial], self.input_data, labels, losses)
+                        closure = self._gradient_closure(optimizer[trial], _x[trial], self.input_data, labels_opt, losses)
                         rec_loss = optimizer[trial].step(closure)
                         rec_loss = rec_loss.item()
                     else:
                         imgs = _x[trial]
-                        if self.config['model'] == 'FedCola_IMG_TXT':
-                            Ys = _labels[trial]
-                        else:
-                            Ys = labels
 
-                        closure = self._gradient_closure(optimizer[trial], imgs, self.input_data, Ys, losses)
+                        closure = self._gradient_closure(optimizer[trial], imgs, self.input_data, labels_opt, losses)
                         rec_loss = optimizer[trial].step(closure)
                         rec_loss = rec_loss.item()
 
