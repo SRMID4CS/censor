@@ -600,7 +600,7 @@ class GradientReconstructor():
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
             if self.config['model'] == 'FedCola_IMG_TXT':
-                labels.requires_grad = True
+                labels[trial].requires_grad = True
                 to_optimize = var_list.copy().append(labels[trial])
             else:
                 to_optimize = var_list.copy()
@@ -626,7 +626,7 @@ class GradientReconstructor():
                 optimizer.zero_grad()
 
                 if self.config['model'] == 'FedCola_IMG_TXT':
-                    labels.requires_grad = True
+                    labels[trial].requires_grad = True
                     labels_opt = labels[trial]
                 else:
                     labels_opt = labels
@@ -725,8 +725,8 @@ class GradientReconstructor():
                 prev_gen_out = torch.ones(self.gen_outs[trial][-1].shape, device=self.gen_outs[trial][-1].device) * self.gen_outs[trial][-1]
             
             if self.config['model'] == 'FedCola_IMG_TXT':
-                labels.requires_grad = True
-                optim_param += [labels[trial]]
+                labels[trial].requires_grad = True
+                optim_param.append(labels[trial])
 
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
@@ -751,7 +751,7 @@ class GradientReconstructor():
                 self.dummy_z = dummy_z[trial]
                 
                 if self.config['model'] == 'FedCola_IMG_TXT':
-                    labels.requires_grad = True
+                    labels[trial].requires_grad = True
                     labels_opt = labels[trial]
                 else:
                     labels_opt = labels
@@ -982,7 +982,7 @@ class GradientReconstructor():
             for iteration in range(max_iterations):
                 for trial in range(self.config['restarts']):
                     if self.config['model'] == 'FedCola_IMG_TXT':
-                        _labels.requires_grad = True
+                        _labels[trial].requires_grad = True
                         labels_opt = _labels[trial]
                     else:
                         labels_opt = _labels
