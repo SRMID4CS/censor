@@ -601,8 +601,10 @@ class GradientReconstructor():
 
             if self.config['model'] == 'FedCola_IMG_TXT':
                 labels[trial].requires_grad = True
-                to_optimize = var_list.copy().append(labels[trial])
+                labels_opt = labels[trial]
+                to_optimize = var_list.copy().append(labels_opt)
             else:
+                labels_opt = labels
                 to_optimize = var_list.copy()
 
             optimizer = torch.optim.Adam(to_optimize, lr=learning_rate)
@@ -625,12 +627,6 @@ class GradientReconstructor():
                 losses = [0, 0, 0, 0, 0]  
                 optimizer.zero_grad()
 
-                if self.config['model'] == 'FedCola_IMG_TXT':
-                    labels[trial].requires_grad = True
-                    labels_opt = labels[trial]
-                else:
-                    labels_opt = labels
-
                 closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses)
                 rec_loss = closure()
 
@@ -639,7 +635,7 @@ class GradientReconstructor():
                 if self.project:
                     ps.step()      
 
-        #project back
+                #project back
                 if start_layer != 0 and self.config['do_project_gen_out']:
                     if self.config['max_radius_gen_out'][index] > 0:
                         deviation = project_onto_l1_ball(self.gen_outs[trial][-1] - prev_gen_out,
@@ -684,7 +680,7 @@ class GradientReconstructor():
                 # Project into image space
                 _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
 
-        return _x
+        return _x, labels
         
     def invert_biggan(self, dummy_z, labels, start_layer, steps, index, img_size=-1):
         
@@ -726,7 +722,10 @@ class GradientReconstructor():
             
             if self.config['model'] == 'FedCola_IMG_TXT':
                 labels[trial].requires_grad = True
-                optim_param.append(labels[trial])
+                labels_opt = labels[trial]
+                optim_param.append(labels_opt)
+            else:
+                labels_opt = labels
 
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
@@ -750,11 +749,6 @@ class GradientReconstructor():
                 optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
                 
-                if self.config['model'] == 'FedCola_IMG_TXT':
-                    labels[trial].requires_grad = True
-                    labels_opt = labels[trial]
-                else:
-                    labels_opt = labels
 
                 closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses)
                 rec_loss = closure()
@@ -795,7 +789,7 @@ class GradientReconstructor():
                 _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
                 _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
 
-        return _x
+        return _x, labels
 
     def inter_optimizer(self, dummy_z, labels, img_size, dryrun=False, prefix=''):
         self.model.eval()
@@ -820,9 +814,9 @@ class GradientReconstructor():
             if begin_layer > self.config['end_layer']:
                 raise Exception('Attemping to go after end layer')
             if self.generative_model_name == 'stylegan2_io':
-                _x = self.invert_stylegan2(dummy_z, labels, begin_layer, range(5 + 2 *begin_layer), int(steps), i)
+                _x, labels = self.invert_stylegan2(dummy_z, labels, begin_layer, range(5 + 2 *begin_layer), int(steps), i)
             elif self.generative_model_name == 'BigGAN':
-                _x = self.invert_biggan(dummy_z, labels, begin_layer, int(steps), i, img_size)
+                _x, labels = self.invert_biggan(dummy_z, labels, begin_layer, int(steps), i, img_size)
                 self.config['KLD'] = 0
             #_x is not in the real image space.
             #TO DO: compute score
@@ -834,6 +828,9 @@ class GradientReconstructor():
                 best_layer_img = opt_img.detach()
                 best_layer_score = dict(stats)
                 best_layer_label = opt_label.detach() if opt_label is not None else None
+            if self.config['save_intermediate_at_txt'] > 0 and self.config['model'] != 'FedCola_IMG_TXT'and self.config['init_text'] != 'ground_truth':
+                logger.info(f'Saving intermediate TXT at iteration {iteration}...')
+
             res[i] = [prefix + f'layer{i}', opt_img.detach(), stats, opt_label.detach() if opt_label is not None else None]
             res.append(['Best_' + prefix + 'first_' + str(i) + '_layer' , best_layer_img, best_layer_score, best_layer_label])
 
