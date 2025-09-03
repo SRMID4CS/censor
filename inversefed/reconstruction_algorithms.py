@@ -602,6 +602,7 @@ class GradientReconstructor():
             if self.config['model'] == 'FedCola_IMG_TXT':
                 labels[trial].requires_grad = True
                 labels_opt = labels[trial]
+                labels_opt.requires_grad = True
                 to_optimize = var_list.copy().append(labels_opt)
             else:
                 labels_opt = labels
@@ -723,6 +724,7 @@ class GradientReconstructor():
             if self.config['model'] == 'FedCola_IMG_TXT':
                 labels[trial].requires_grad = True
                 labels_opt = labels[trial]
+                labels_opt.requires_grad = True
                 optim_param.append(labels_opt)
             else:
                 labels_opt = labels
@@ -825,13 +827,13 @@ class GradientReconstructor():
             if stats['opt'] < best_layer_score['opt']:  #save the best layer output
                 # best_layer_name = 'Best_' + prefix + 'output' 
                 # best_layer_num = i
-                best_layer_img = opt_img.detach()
+                best_layer_img = opt_img.detach().clone()
                 best_layer_score = dict(stats)
-                best_layer_label = opt_label.detach() if opt_label is not None else None
+                best_layer_label = opt_label.detach().clone() if opt_label is not None else None
             if self.config['save_intermediate_at_txt'] > 0 and self.config['model'] != 'FedCola_IMG_TXT'and self.config['init_text'] != 'ground_truth':
                 logger.info(f'Saving intermediate TXT at iteration {iteration}...')
 
-            res[i] = [prefix + f'layer{i}', opt_img.detach(), stats, opt_label.detach() if opt_label is not None else None]
+            res[i] = [prefix + f'layer{i}', opt_img.detach().clone(), stats, opt_label.detach().clone() if opt_label is not None else None]
             res.append(['Best_' + prefix + 'first_' + str(i) + '_layer' , best_layer_img, best_layer_score, best_layer_label])
 
         return res
