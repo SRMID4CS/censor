@@ -635,7 +635,7 @@ class GradientReconstructor():
 
 
                 #-                      Calculate loss                           -#
-                losses = [0, 0, 0, 0, 0]  
+                losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                 optimizer.zero_grad()
 
                 closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses)
@@ -667,7 +667,7 @@ class GradientReconstructor():
 
                 pbar.set_description(
                     (
-                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f}"
+                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f} | CLIP: {losses[6]:7.4f}"
                     )
                 )
 
@@ -757,7 +757,7 @@ class GradientReconstructor():
                 optimizer.param_groups[0]['lr'] = lr
 
                 _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], ys=self.ys[trial], img_size=img_size, start_layer=start_layer) 
-                losses = [0, 0, 0, 0, 0]  
+                losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                 optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
                 
@@ -778,7 +778,7 @@ class GradientReconstructor():
 
                 pbar.set_description(
                     (
-                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f}"
+                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f} | CLIP: {losses[6]:7.4f}"
                     )
                 )
 
@@ -993,9 +993,10 @@ class GradientReconstructor():
                     if self.config['model'] == 'FedCola_IMG_TXT':
                         _labels[trial].requires_grad = True
                         labels_opt = _labels[trial]
+                        labels_opt.requires_grad = True
                     else:
                         labels_opt = _labels
-                    losses = [0,0,0,0,0,0]
+                    losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                     #Group Regularizer
                     if trial == 0 and iteration + 1 == construct_group_mean_at and self.config['group_lazy'] > 0:
                         self.do_group_mean = True
@@ -1086,7 +1087,7 @@ class GradientReconstructor():
                                         f.write(recon_sentence)
 
                         if (iteration + 1 == self.max_iterations) or iteration % save_interval == 0:
-                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss:2.4f} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | l2: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | kld: {losses[4]:7.4f} | patch: {losses[5]:7.4f}')
+                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss:2.4f} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | ImageNorm: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | kld: {losses[4]:7.4f} | patch: {losses[5]:7.4f} | CLIP: {losses[6]:7.4f} ')
                             if self.config['z_norm'] > 0:
                                 logger.info(torch.norm(dummy_z[trial], 2).item())
                         if iteration + 1 == max_iterations and self.config['optim'] == 'CMA-ES':
@@ -1207,7 +1208,7 @@ class GradientReconstructor():
                 for k in range(self.num_images):
                     self.G_list2d[trial][k].to(f'cuda:{k%self.num_gpus}')
                 for iteration in range(self.gias_iterations):
-                    losses = [0,0,0,0,0]
+                    losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
 
                     _x_trial = [self.gen_dummy_data(self.G_list2d[trial][k], self.generative_model_name, self.dummy_zs[k], noise=self.noise_zs[k], ys=self.ys_zs[k]).to('cpu') for k in range(self.num_images)]
                     _x[trial] = torch.stack(_x_trial).squeeze(1).to(self.device)
@@ -1222,7 +1223,7 @@ class GradientReconstructor():
                         _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
 
                         if (iteration + 1 == self.gias_iterations) or iteration % save_interval == 0:
-                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss.item():2.4E} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | l2: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | patch: {losses[4]:7.4f}')
+                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss.item():2.4E} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | ImageNorm: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | patch: {losses[5]:7.4f} | CLIP: {losses[6]:7.4f}')
 
                     # Unload G to CPU
                     # for k in range(self.num_images):
@@ -1394,7 +1395,7 @@ class GradientReconstructor():
                         KLD = -0.5 * torch.sum(1 + torch.log(torch.std(self.dummy_z.squeeze(), unbiased=False, axis=-1).pow(2) + 1e-10) - torch.mean(self.dummy_z.squeeze(), axis=-1).pow(2) - torch.std(self.dummy_z.squeeze(), unbiased=False, axis=-1).pow(2))
                         rec_loss += self.config['KLD'] * KLD
                         losses[4] = KLD.item()
-                total_loss += rec_loss
+
                 if self.config['patch_prior'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
                     patch_prior_loss_value = patch_prior_loss(x_trial, patch_size=self.config['patch_size'])
                     rec_loss += patch_prior_loss_value * self.config['patch_prior']
@@ -1405,7 +1406,10 @@ class GradientReconstructor():
                     x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
                     recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     clip_loss = 1 - self.clip_similarity(x_trial_clamp, recon_sentence, device=self.device)
-                    total_loss += self.config['CLIP_loss'] * clip_loss
+                    rec_loss += self.config['CLIP_loss'] * clip_loss
+                    losses[6] = clip_loss.item()
+
+                total_loss += rec_loss
 
             if self.config['optim'] != "CMA-ES":
                 total_loss.backward()
@@ -1546,23 +1550,33 @@ class FedAvgReconstructor(GradientReconstructor):
                     group_loss =  torch.norm(x_trial - self.group_mean, 2) / (imsize_dict[self.config['dataset']] ** 2)
                     rec_loss += self.config['group_lazy'] * group_loss
                     losses[3] = group_loss
+
+                if self.config['KLD'] > 0:   
+                    if self.generative_model_name == 'BigGAN': 
+                        KLD = -0.5 * torch.sum(1 + torch.log(torch.std(self.dummy_z.squeeze(), unbiased=False, axis=-1).pow(2) + 1e-10) - torch.mean(self.dummy_z.squeeze(), axis=-1).pow(2) - torch.std(self.dummy_z.squeeze(), unbiased=False, axis=-1).pow(2))
+                        rec_loss += self.config['KLD'] * KLD
+                        losses[4] = KLD.item()
+
                 if self.config['patch_prior'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
                     patch_prior_loss_value = patch_prior_loss(x_trial, patch_size=self.config['patch_size'])
                     rec_loss += patch_prior_loss_value * self.config['patch_prior']
-                    losses[4] = patch_prior_loss_value.item()
-
-                if self.config['z_norm'] > 0:
-                    if self.dummy_z != None:
-                        z_loss = torch.norm(self.dummy_z, 2)
-                        rec_loss += 1e-3 * z_loss
-                total_loss += rec_loss
+                    losses[5] = patch_prior_loss_value.item()
 
                 if self.config['CLIP_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
                     dm, ds = self.mean_std
                     x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
                     recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     clip_loss = 1 - self.clip_similarity(x_trial_clamp, recon_sentence, device=self.device)
-                    total_loss += self.config['CLIP_loss'] * clip_loss
+                    rec_loss += self.config['CLIP_loss'] * clip_loss
+                    losses[6] = clip_loss.item()
+
+                if self.config['z_norm'] > 0:
+                    if self.dummy_z != None:
+                        z_loss = torch.norm(self.dummy_z, 2)
+                        rec_loss += 1e-3 * z_loss
+
+                total_loss += rec_loss
+
 
             total_loss.backward()
             return total_loss
