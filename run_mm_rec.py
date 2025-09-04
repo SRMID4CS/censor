@@ -653,6 +653,7 @@ if __name__ == "__main__":
                             recon_sentence_embedding_seq = output_den[j, ...] if config['model'] == 'FedCola_TXT' else label_best[j, ...]
                             # convert to text
                             recon_sentence = de_embed_text(recon_sentence_embedding_seq, bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
+                            logger.info(f'Final Recon Sentence : {recon_sentence}')
                             recon_sentence_list.append(recon_sentence)
                             with open(os.path.join(ouput_dir, f'{tid_list[j]}_gen.txt'), 'w') as f:
                                 f.write(recon_sentence)

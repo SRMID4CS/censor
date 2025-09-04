@@ -29,8 +29,8 @@ def de_embed_text(sentence_embedding_seq, bert_embedding=None, tokenizer=None)->
     # Convert list of tokens to sentence
     sentence = tokenizer.convert_tokens_to_string(tokens)
 
-    print("Tokens:", tokens)
-    print("Reconstructed Sentence:", sentence)
+    # print("Tokens:", tokens)
+    # print("Reconstructed Sentence:", sentence)
     
     return sentence
 
