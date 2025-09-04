@@ -206,7 +206,7 @@ class GradientReconstructor():
         self.text_embeds = None # Dummy text embedding reconstruction
 
         if self.config['CLIP_loss'] > 0:
-            self.CLIP_model, self.CLIP_processor = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device), AutoProcessor.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
+            self.CLIP_model, self.CLIP_processor = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device), AutoProcessor.from_pretrained("openai/clip-vit-base-patch32")
             self.CLIP_model = self.CLIP_model.eval()
             # self.CLIP_processor = self.CLIP_processor.eval()
             for param in self.CLIP_model.parameters():
@@ -1310,6 +1310,7 @@ class GradientReconstructor():
 
     def _gradient_closure(self, optimizer, x_trial, input_gradient, label, losses):
 
+        data_holder = DataHolder()
         def closure():
             # logger.info(f"label:{label}")
             num_images = label.shape[0]
@@ -1398,9 +1399,9 @@ class GradientReconstructor():
                     losses[5] = patch_prior_loss_value.item()
                 
                 if self.config['CLIP_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
-                    recon_sentence = de_embed_text(batch_label, bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
-                    # CLIP loss
-                    clip_loss = 1 - self.clip_similarity(x_trial, recon_sentence, device=self.device)
+                    x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
+                    recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                    clip_loss = 1 - self.clip_similarity(x_trial_clamp, recon_sentence, device=self.device)
                     total_loss += self.config['CLIP_loss'] * clip_loss
 
             if self.config['optim'] != "CMA-ES":
@@ -1471,7 +1472,7 @@ class GradientReconstructor():
     
     def clip_similarity(self, image, text, device='cuda'):
 
-        inputs = self.CLIP_processor(text=[recon_sentence], images=image, return_tensors="pt", padding=True)
+        inputs = self.CLIP_processor(text=text, images=image, return_tensors="pt", padding=True)
         outputs = self.CLIP_model(**inputs)
 
         return outputs.logits_per_image.squeeze().to(device)
@@ -1493,6 +1494,7 @@ class FedAvgReconstructor(GradientReconstructor):
 
     def _gradient_closure(self, optimizer, x_trial, input_gradient, label, losses):
 
+        data_holder = DataHolder()
         def closure():
             num_images = label.shape[0]
             num_gradients = len(input_gradient)
@@ -1553,9 +1555,10 @@ class FedAvgReconstructor(GradientReconstructor):
                 total_loss += rec_loss
 
                 if self.config['CLIP_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
-                    recon_sentence = de_embed_text(batch_label, bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                    x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
+                    recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     # CLIP loss
-                    clip_loss = 1 - self.clip_similarity(x_trial, recon_sentence, device=self.device)
+                    clip_loss = 1 - self.clip_similarity(x_trial_clamp, recon_sentence, device=self.device)
                     total_loss += self.config['CLIP_loss'] * clip_loss
 
             total_loss.backward()
