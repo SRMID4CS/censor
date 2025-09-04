@@ -303,6 +303,7 @@ if __name__ == "__main__":
                         num_sample = config['num_sample'],
                         KLD = config['KLD'],
                         patch_prior=config['patch_prior'],
+                        CLIP_loss = config['CLIP_loss'],
                         patch_size=args.patch_size,
                         gias_lr=config['gias_lr'],
                         gias_iterations=config['gias_iterations'],

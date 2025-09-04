@@ -31,6 +31,8 @@ from utils.text_utils import de_embed_text
 
 import logging
 
+from transformers import AutoProcessor, CLIPModel
+
 logger = logging.getLogger(__name__)
 
 imsize_dict = {
@@ -91,6 +93,7 @@ DEFAULT_CONFIG = dict(signed=False,
                       cma_budget=0,
                       KLD=0,
                       patch_prior=0,
+                      CLIP_loss=0,
                       patch_size=16,
                       #LR pace for training
                       lr_same_pace=False,
@@ -201,6 +204,13 @@ class GradientReconstructor():
         self.iDLG = True
         self.images = None
         self.text_embeds = None # Dummy text embedding reconstruction
+
+        if self.config['CLIP_loss'] > 0:
+            self.CLIP_model, self.CLIP_processor = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device), AutoProcessor.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
+            self.CLIP_model = self.CLIP_model.eval()
+            # self.CLIP_processor = self.CLIP_processor.eval()
+            for param in self.CLIP_model.parameters():
+                param.requires_grad = False
 
         # initialization
         if G:
@@ -1451,7 +1461,14 @@ class GradientReconstructor():
         last_weight_min = torch.argsort(torch.sum(input_gradient[-2], dim=-1), dim=-1)[:num_inputs]
         labels = torch.sort(last_weight_min.detach().reshape((-1,)).requires_grad_(False))[0]     # Use sort to adjust the order of labels as the same to grouth truth 
         return labels
-        
+    
+    def clip_similarity(self, image, text, device='cuda'):
+
+        inputs = self.CLIP_processor(text=[recon_sentence], images=image, return_tensors="pt", padding=True)
+        outputs = self.CLIP_model(**inputs)
+
+        return outputs.logits_per_image.squeeze().to(device)
+
 
 
 class FedAvgReconstructor(GradientReconstructor):
@@ -1528,10 +1545,12 @@ class FedAvgReconstructor(GradientReconstructor):
                         rec_loss += 1e-3 * z_loss
                 total_loss += rec_loss
 
-                # if self.config['CLIP_loss'] > 0:
-                #     # CLIP loss
-                #     clip_loss = self.clip_loss_fn(x_trial, label)
-                #     total_loss += self.config['CLIP_loss'] * clip_loss
+                if self.config['CLIP_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
+                    recon_sentence = de_embed_text(batch_label, bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                    # CLIP loss
+                    clip_loss = 1 - self.clip_similarity(x_trial, recon_sentence, device=self.device)
+                    logger.info(f"CLIP loss: {clip_loss.item():2.4f}")
+                    total_loss += self.config['CLIP_loss'] * clip_loss
 
             total_loss.backward()
             return total_loss
