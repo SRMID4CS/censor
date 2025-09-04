@@ -1482,8 +1482,9 @@ class GradientReconstructor():
         inputs = self.CLIP_processor(text=text, images=image, return_tensors="pt", truncation=True, padding=True).to(device)
         outputs = self.CLIP_model(**inputs)
 
-        return outputs.logits_per_image.squeeze().to(device)
-
+        cosine_similarity = torch.nn.functional.cosine_similarity(outputs.image_embeds, outputs.text_embeds, dim=-1).squeeze()
+        
+        return cosine_similarity
 
 
 class FedAvgReconstructor(GradientReconstructor):
