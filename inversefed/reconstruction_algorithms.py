@@ -1401,7 +1401,6 @@ class GradientReconstructor():
                     recon_sentence = de_embed_text(batch_label, bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     # CLIP loss
                     clip_loss = 1 - self.clip_similarity(x_trial, recon_sentence, device=self.device)
-                    logger.info(f"CLIP loss: {clip_loss.item():2.4f}")
                     total_loss += self.config['CLIP_loss'] * clip_loss
 
             if self.config['optim'] != "CMA-ES":
@@ -1557,7 +1556,6 @@ class FedAvgReconstructor(GradientReconstructor):
                     recon_sentence = de_embed_text(batch_label, bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     # CLIP loss
                     clip_loss = 1 - self.clip_similarity(x_trial, recon_sentence, device=self.device)
-                    logger.info(f"CLIP loss: {clip_loss.item():2.4f}")
                     total_loss += self.config['CLIP_loss'] * clip_loss
 
             total_loss.backward()
