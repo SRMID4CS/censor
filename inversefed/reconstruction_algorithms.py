@@ -1396,6 +1396,14 @@ class GradientReconstructor():
                     patch_prior_loss_value = patch_prior_loss(x_trial, patch_size=self.config['patch_size'])
                     rec_loss += patch_prior_loss_value * self.config['patch_prior']
                     losses[5] = patch_prior_loss_value.item()
+                
+                if self.config['CLIP_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
+                    recon_sentence = de_embed_text(batch_label, bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                    # CLIP loss
+                    clip_loss = 1 - self.clip_similarity(x_trial, recon_sentence, device=self.device)
+                    logger.info(f"CLIP loss: {clip_loss.item():2.4f}")
+                    total_loss += self.config['CLIP_loss'] * clip_loss
+
             if self.config['optim'] != "CMA-ES":
                 total_loss.backward()
             return total_loss
