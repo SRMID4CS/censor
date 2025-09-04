@@ -1068,7 +1068,7 @@ class GradientReconstructor():
                             logger.info(f'Saving intermediate TXT at iteration {iteration}...')
                             if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_text'] != 'ground_truth':
                                 for num_txt in range(self.num_images):
-                                    recon_sentence = de_embed_text(Ys[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                                    recon_sentence = de_embed_text(labels_opt[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                                     dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
                                     os.makedirs(dir_path, exist_ok=True)
                                     with open(os.path.join(dir_path, f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
