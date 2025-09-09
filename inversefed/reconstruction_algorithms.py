@@ -609,7 +609,7 @@ class GradientReconstructor():
             
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
-            if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_txt'] != 'ground_truth':
+            if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_text'] != 'ground_truth':
                 labels[trial].requires_grad = True
                 labels_opt = labels[trial]
                 labels_opt.requires_grad = True
@@ -734,7 +734,7 @@ class GradientReconstructor():
                 optim_param =  [self.gen_outs[trial][-1]]
                 prev_gen_out = torch.ones(self.gen_outs[trial][-1].shape, device=self.gen_outs[trial][-1].device) * self.gen_outs[trial][-1]
             
-            if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_txt'] != 'ground_truth':
+            if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_text'] != 'ground_truth':
                 labels[trial].requires_grad = True
                 labels_opt = labels[trial]
                 labels_opt.requires_grad = True
