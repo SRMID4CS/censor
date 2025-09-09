@@ -609,7 +609,7 @@ class GradientReconstructor():
             
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
-            if self.config['model'] == 'FedCola_IMG_TXT':
+            if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_txt'] != 'ground_truth':
                 labels[trial].requires_grad = True
                 labels_opt = labels[trial]
                 labels_opt.requires_grad = True
@@ -617,6 +617,9 @@ class GradientReconstructor():
             else:
                 labels_opt = labels
                 to_optimize = var_list.copy()
+
+            for param in to_optimize:
+                param.requires_grad = True
 
             optimizer = torch.optim.Adam(to_optimize, lr=learning_rate)
 
@@ -731,13 +734,16 @@ class GradientReconstructor():
                 optim_param =  [self.gen_outs[trial][-1]]
                 prev_gen_out = torch.ones(self.gen_outs[trial][-1].shape, device=self.gen_outs[trial][-1].device) * self.gen_outs[trial][-1]
             
-            if self.config['model'] == 'FedCola_IMG_TXT':
+            if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_txt'] != 'ground_truth':
                 labels[trial].requires_grad = True
                 labels_opt = labels[trial]
                 labels_opt.requires_grad = True
                 optim_param.append(labels_opt)
             else:
                 labels_opt = labels
+
+            for param in optim_param:
+                param.requires_grad = True
 
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
@@ -840,8 +846,6 @@ class GradientReconstructor():
                 best_layer_img = opt_img.detach().clone()
                 best_layer_score = dict(stats)
                 best_layer_label = opt_label.detach().clone() if opt_label is not None else None
-            if self.config['save_intermediate_at_txt'] > 0 and self.config['model'] != 'FedCola_IMG_TXT'and self.config['init_text'] != 'ground_truth':
-                logger.info(f'Saving intermediate TXT at iteration {iteration}...')
 
             res[i] = [prefix + f'layer{i}', opt_img.detach().clone(), stats, opt_label.detach().clone() if opt_label is not None else None]
             res.append(['Best_' + prefix + 'first_' + str(i) + '_layer' , best_layer_img, best_layer_score, best_layer_label])
