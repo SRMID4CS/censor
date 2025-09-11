@@ -1,3 +1,5 @@
+import torch
+
 def de_embed_text(sentence_embedding_seq, bert_embedding=None, tokenizer=None)-> str:
     """ 
     Convert the text embedding back to text
@@ -31,6 +33,26 @@ def de_embed_text(sentence_embedding_seq, bert_embedding=None, tokenizer=None)->
 
     # print("Tokens:", tokens)
     # print("Reconstructed Sentence:", sentence)
+    
+    return sentence
+
+
+def get_text_from_tokens(token_ids, tokenizer) -> str:
+    """
+    Convert a list of token IDs to a string using the provided tokenizer.
+    
+    Args:
+        token_ids (list or tensor): List or tensor of token IDs.
+        tokenizer: Tokenizer with a method `convert_ids_to_tokens`.
+    
+    Returns:
+        str: The reconstructed text.
+    """
+    if isinstance(token_ids, torch.Tensor):
+        token_ids = token_ids.tolist()
+    
+    tokens = tokenizer.convert_ids_to_tokens(token_ids)
+    sentence = tokenizer.convert_tokens_to_string(tokens)
     
     return sentence
 

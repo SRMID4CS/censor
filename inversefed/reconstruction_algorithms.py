@@ -27,7 +27,7 @@ from inversefed.consts import STYLE_LEN
 import nevergrad as ng
 import numpy as np
 
-from utils.text_utils import de_embed_text
+from utils.text_utils import de_embed_text, get_text_from_tokens
 
 import logging
 
@@ -994,10 +994,12 @@ class GradientReconstructor():
 
             for iteration in range(max_iterations):
                 for trial in range(self.config['restarts']):
-                    if self.config['model'] == 'FedCola_IMG_TXT':
+                    if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_text'] != 'ground_truth':
                         _labels[trial].requires_grad = True
                         labels_opt = _labels[trial]
                         labels_opt.requires_grad = True
+                    elif self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_text'] == 'ground_truth':
+                        labels_opt = _labels[trial]
                     else:
                         labels_opt = _labels
                     losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
@@ -1408,7 +1410,10 @@ class GradientReconstructor():
                 if self.config['CLIP_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
                     dm, ds = self.mean_std
                     x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
-                    recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                    if self.config['init_text'] != 'ground_truth':
+                        recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                    else:
+                        recon_sentence = get_text_from_tokens(batch_label[0], tokenizer=data_holder.get('bert_tokenizer'))
                     clip_loss = 1 - self.clip_similarity(x_trial_clamp, recon_sentence, device=self.device)
                     rec_loss += self.config['CLIP_loss'] * clip_loss
                     losses[6] = clip_loss.item()
