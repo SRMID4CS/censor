@@ -26,7 +26,7 @@ def get_param_indices_fedcola(model, verbose=False):
             indices["img_blocks"].append(idx)
         elif "blockses.1" in name:
             indices["txt_blocks"].append(idx)
-        elif "heads" in name:
+        elif "head" in name:
             indices["heads"].append(idx)
         idx += 1
     if verbose:
