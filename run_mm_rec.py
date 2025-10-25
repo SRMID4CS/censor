@@ -187,7 +187,7 @@ if __name__ == "__main__":
     model, model_seed = inversefed.construct_model(config['model'], num_classes=nclass_dict[config['dataset']], num_channels=3, seed=set_seed, args=args)
     model.to(**setup)
 
-    logger.info("Model loaded: {}".format(model))
+    # logger.info("Model loaded: {}".format(model))
 
     if '8' in args.model_name:
         args.patch_size = 8
@@ -199,10 +199,10 @@ if __name__ == "__main__":
         args.patch_size = 16
         logger.warning("Patch size not set, using default 16.")
 
-    try:
-        log_model_dropout_rates(model, logger)
-    except Exception as e:
-        logger.error(f"Error logging dropout rates: {e}")
+    # try:
+    #     log_model_dropout_rates(model, logger)
+    # except Exception as e:
+    #     logger.error(f"Error logging dropout rates: {e}")
 
     bert_embedding = None
     if hasattr(model, 'embeddings'):
