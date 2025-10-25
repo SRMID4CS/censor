@@ -1414,7 +1414,7 @@ class GradientReconstructor():
                         recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     else:
                         recon_sentence = get_text_from_tokens(batch_label[0], tokenizer=data_holder.get('bert_tokenizer'))
-                    clip_loss = 1 - self.clip_similarity(x_trial_clamp, recon_sentence, device=self.device)
+                    clip_loss = 1 - self.clip_similarity(x_trial_clamp.detach(), recon_sentence, device=self.device)
                     rec_loss += self.config['CLIP_loss'] * clip_loss
                     losses[6] = clip_loss.item()
 
@@ -1576,7 +1576,7 @@ class FedAvgReconstructor(GradientReconstructor):
                     dm, ds = self.mean_std
                     x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
                     recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
-                    clip_loss = 1 - self.clip_similarity(x_trial_clamp, recon_sentence, device=self.device)
+                    clip_loss = 1 - self.clip_similarity(x_trial_clamp.detach(), recon_sentence, device=self.device)
                     rec_loss += self.config['CLIP_loss'] * clip_loss
                     losses[6] = clip_loss.item()
 
