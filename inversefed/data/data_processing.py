@@ -275,10 +275,11 @@ def _build_cifar100_mm(data_path, augmentations=True, normalize=True, args=None)
 
     # Create wrapper class to add text captions
     class CIFAR100MMDataset(torch.utils.data.Dataset):
-        def __init__(self, base_dataset, class_names, tokenizer):
+        def __init__(self, base_dataset, class_names, tokenizer, max_length = 10):
             self.base_dataset = base_dataset
             self.class_names = class_names
             self.tokenizer = tokenizer
+            self.max_length = max_length
             
         def __len__(self):
             return len(self.base_dataset)
@@ -290,7 +291,7 @@ def _build_cifar100_mm(data_path, augmentations=True, normalize=True, args=None)
             
             # Tokenize the caption
             tokens = self.tokenizer.encode(caption, add_special_tokens=True, 
-                                         max_length=40, padding='max_length', 
+                                         max_length=self.max_length, padding='max_length', 
                                          truncation=True, return_tensors='pt')
             tokens = tokens.squeeze(0)  # Remove batch dimension
             
@@ -304,8 +305,8 @@ def _build_cifar100_mm(data_path, augmentations=True, normalize=True, args=None)
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
     
     # Wrap datasets
-    trainset_mm = CIFAR100MMDataset(trainset, cifar100_classes, tokenizer)
-    validset_mm = CIFAR100MMDataset(validset, cifar100_classes, tokenizer)
+    trainset_mm = CIFAR100MMDataset(trainset, cifar100_classes, tokenizer, max_length=getattr(args, 'seq_len', 10))
+    validset_mm = CIFAR100MMDataset(validset, cifar100_classes, tokenizer, max_length=getattr(args, 'seq_len', 10))
 
     # Apply sample reduction if specified in args
     if hasattr(args, 'reduce_samples') and args.reduce_samples > 0:
