@@ -307,6 +307,18 @@ def _build_cifar100_mm(data_path, augmentations=True, normalize=True, args=None)
     trainset_mm = CIFAR100MMDataset(trainset, cifar100_classes, tokenizer)
     validset_mm = CIFAR100MMDataset(validset, cifar100_classes, tokenizer)
 
+    # Apply sample reduction if specified in args
+    if hasattr(args, 'reduce_samples') and args.reduce_samples > 0:
+        # Create reduced dataset by taking a subset of indices
+        if len(trainset_mm) > args.reduce_samples:
+            reduced_indices = list(range(args.reduce_samples))
+            trainset_mm = torch.utils.data.Subset(trainset_mm, reduced_indices)
+        
+        if hasattr(args, 'reduce_test_samples') and args.reduce_test_samples > 0:
+            if len(validset_mm) > args.reduce_test_samples:
+                reduced_test_indices = list(range(args.reduce_test_samples))
+                validset_mm = torch.utils.data.Subset(validset_mm, reduced_test_indices)
+
     return trainset_mm, validset_mm
 
 def _build_mnist(data_path, augmentations=True, normalize=True):
