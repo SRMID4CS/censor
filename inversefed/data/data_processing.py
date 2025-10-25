@@ -22,13 +22,13 @@ from transformers import BertTokenizer
 resize_dict = {
     'ImageNet': 256, 'ImageNet_io' : 32,
     'I256': 256, 'I128': 144, 'I64': 72, 'I32': 36,
-    'C10':32, 'C100':32, 
+    'C10':32, 'C100':32, 'CIFAR100_MM': 256,
     'PERM':64
 }
 centercrop_dict = {
     'ImageNet': 224, 'ImageNet_io' : 32,
     'I256': 256, 'I128': 128, 'I64': 64, 'I32': 32,
-    'C10':32, 'C100':32,
+    'C10':32, 'C100':32, 'CIFAR100_MM': 224,
     'PERM':64
 }
 
@@ -38,10 +38,13 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
 
     if dataset == 'CIFAR10':
         trainset, validset = _build_cifar10(path, defs.augmentations, normalize)
-        loss_fn = Classification()
+        loss_fn = Classification()    
     elif dataset == 'CIFAR100':
         trainset, validset = _build_cifar100(path, defs.augmentations, normalize)
         loss_fn = Classification()
+    elif dataset == 'CIFAR100_MM':
+        trainset, validset = _build_cifar100_mm(path, defs.augmentations, normalize, args)
+        loss_fn = torch.nn.functional.cosine_embedding_loss
     elif dataset == 'MNIST':
         trainset, validset = _build_mnist(path, defs.augmentations, normalize)
         loss_fn = Classification()
@@ -225,6 +228,86 @@ def _build_cifar100(data_path, augmentations=True, normalize=True):
 
     return trainset, validset
 
+def _build_cifar100_mm(data_path, augmentations=True, normalize=True, args=None):
+    """Define CIFAR-100 with multimodal captions for each class."""
+    # CIFAR-100 class names
+    cifar100_classes = [
+        'apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 'bicycle', 'bottle',
+        'bowl', 'boy', 'bridge', 'bus', 'butterfly', 'camel', 'can', 'castle', 'caterpillar', 'cattle',
+        'chair', 'chimpanzee', 'clock', 'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur',
+        'dolphin', 'elephant', 'flatfish', 'forest', 'fox', 'girl', 'hamster', 'house', 'kangaroo', 'keyboard',
+        'lamp', 'lawn_mower', 'leopard', 'lion', 'lizard', 'lobster', 'man', 'maple_tree', 'motorcycle', 'mountain',
+        'mouse', 'mushroom', 'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree', 'pear', 'pickup_truck', 'pine_tree',
+        'plain', 'plate', 'poppy', 'porcupine', 'possum', 'rabbit', 'raccoon', 'ray', 'road', 'rocket',
+        'rose', 'sea', 'seal', 'shark', 'shrew', 'skunk', 'skyscraper', 'snail', 'snake', 'spider',
+        'squirrel', 'streetcar', 'sunflower', 'sweet_pepper', 'table', 'tank', 'telephone', 'television', 'tiger', 'tractor',
+        'train', 'trout', 'tulip', 'turtle', 'wardrobe', 'whale', 'willow_tree', 'wolf', 'woman', 'worm'
+    ]
+    
+    # Load data
+    trainset = torchvision.datasets.CIFAR100(root=data_path, train=True, download=True, transform=transforms.ToTensor())
+    validset = torchvision.datasets.CIFAR100(root=data_path, train=False, download=True, transform=transforms.ToTensor())
+
+    # Get mean and std
+    try:
+        from ..consts import cifar100_mean, cifar100_std
+        data_mean, data_std = cifar100_mean, cifar100_std
+    except ImportError:
+        data_mean, data_std = _get_meanstd(trainset)
+
+    # Create transforms for 224x224 to match multimodal model requirements
+    transform = transforms.Compose([
+        transforms.Resize(resize_dict['CIFAR100_MM']),
+        transforms.CenterCrop(centercrop_dict['CIFAR100_MM']),
+        transforms.ToTensor(),
+        transforms.Normalize(data_mean, data_std) if normalize else transforms.Lambda(lambda x: x)])
+    
+    if augmentations:
+        transform_train = transforms.Compose([
+            transforms.RandomResizedCrop(centercrop_dict['CIFAR100_MM']),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(data_mean, data_std) if normalize else transforms.Lambda(lambda x: x)])
+        trainset.transform = transform_train
+    else:
+        trainset.transform = transform
+    validset.transform = transform
+
+    # Create wrapper class to add text captions
+    class CIFAR100MMDataset(torch.utils.data.Dataset):
+        def __init__(self, base_dataset, class_names, tokenizer):
+            self.base_dataset = base_dataset
+            self.class_names = class_names
+            self.tokenizer = tokenizer
+            
+        def __len__(self):
+            return len(self.base_dataset)
+            
+        def __getitem__(self, idx):
+            image, label = self.base_dataset[idx]
+            class_name = self.class_names[label]
+            caption = f"A {class_name} in the image."
+            
+            # Tokenize the caption
+            tokens = self.tokenizer.encode(caption, add_special_tokens=True, 
+                                         max_length=40, padding='max_length', 
+                                         truncation=True, return_tensors='pt')
+            tokens = tokens.squeeze(0)  # Remove batch dimension
+            
+            return image, tokens
+
+    # Get tokenizer from args
+    if hasattr(args, 'tokenizer') and args.tokenizer is not None:
+        tokenizer = args.tokenizer
+    else:
+        from transformers import BertTokenizer
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+    
+    # Wrap datasets
+    trainset_mm = CIFAR100MMDataset(trainset, cifar100_classes, tokenizer)
+    validset_mm = CIFAR100MMDataset(validset, cifar100_classes, tokenizer)
+
+    return trainset_mm, validset_mm
 
 def _build_mnist(data_path, augmentations=True, normalize=True):
     """Define MNIST with everything considered."""
@@ -418,7 +501,7 @@ def _build_permuted_Imagenet(data_path, augmentations=True, normalize=True):
 
 
 def _get_meanstd(dataset):
-    cc = torch.cat([trainset[i][0].reshape(3, -1) for i in range(len(trainset))], dim=1)
+    cc = torch.cat([dataset[i][0].reshape(3, -1) for i in range(len(dataset))], dim=1)
     data_mean = torch.mean(cc, dim=1).tolist()
     data_std = torch.std(cc, dim=1).tolist()
     return data_mean, data_std

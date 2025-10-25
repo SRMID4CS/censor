@@ -68,7 +68,7 @@ def init_logger(output_dir, log_level=logging.INFO):
     return root_logger
 
 nclass_dict = {'I32': 1000, 'I64': 1000, 'I128': 1000, 
-               'CIFAR10': 10, 'CIFAR100': 100, 'CA': 8, 'ImageNet':1000, 'IMAGENET_IO' : 1000,
+               'CIFAR10': 10, 'CIFAR100': 100, 'CIFAR100_MM': 100, 'CA': 8, 'ImageNet':1000, 'IMAGENET_IO' : 1000,
                'FFHQ': 10, 'FFHQ64': 10, 'FFHQ128': 10, 'OOD_FFHQ':10, 'OOD_IMAGENET':1000,
                'Coco': 25499, 'Coco_img': 25499, 'Coco_txt': 25499,
                }
