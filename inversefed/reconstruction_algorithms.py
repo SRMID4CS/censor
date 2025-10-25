@@ -1487,6 +1487,20 @@ class GradientReconstructor():
         return labels
     
     def clip_similarity(self, image, text, device='cuda'):
+        # Convert tensor to proper format for CLIP processor  
+        if isinstance(image, torch.Tensor):
+            # Convert from tensor to numpy array and ensure proper format
+            image_np = image.detach().cpu().numpy()
+            # Handle batch dimension and channel order (C,H,W) -> (H,W,C)
+            if len(image_np.shape) == 4:  # Batch of images
+                image_np = image_np.transpose(0, 2, 3, 1)  # (B,C,H,W) -> (B,H,W,C)
+                image_np = image_np.squeeze(0)  # Remove batch dimension  
+            elif len(image_np.shape) == 3:  # Single image
+                image_np = image_np.transpose(1, 2, 0)  # (C,H,W) -> (H,W,C)
+            
+            # Ensure values are in [0, 255] range for PIL
+            image_np = (image_np * 255).astype(np.uint8)
+            image = image_np
 
         inputs = self.CLIP_processor(text=text, images=image, return_tensors="pt", truncation=True, padding=True).to(device)
         outputs = self.CLIP_model(**inputs)
