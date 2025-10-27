@@ -1,0 +1,68 @@
+Introduction : 'GAN-free methods for gradient inversion attack on Flickr30k image-only dataset.'
+  
+optim : 'GAN_free'    #optim method, ['GAN_based', 'GAN_free']
+cost_fn : 'sim_cmpr0'   #the type of loss function 
+set_seed :       # random seed. Following geiping et. al., we do not give random seed for GAN-free methods.
+indices : 'def'      #decide which part of gradients to be involved in the final gradients match loss.
+weights : 'equal'    #weight of every graident scalar's matching loss
+init : 'randn'     #how we initial the original latent code.
+init_text : 'randn'    #how we initial the original latent code of text embedding.
+model : 'FedCola_IMG'   #FL model ['FedCola_IMG', 'FedCola_TXT', 'FedCola_IMG_TXT']
+restarts : 4
+
+num_images : 1   # the number of images to reconstruct at a batch
+num_exp : 1     # the number of experiments
+target_id : 10 # the target image id + iterative incrementation of id
+target_id_increment : 5 # the incrementation of target image id
+unrelated_target_offset : -1 # the offset for unrelated target
+lr : 0.1            #learning rate for Yin et al.
+total_variation : 0.0001     #the coefficient of total variation 
+image_norm : 0.000001    #the coefficient of norm regularizer for Yin et al.
+group_lazy : 0.01    #choose if we use group lazy regularization for Yin et al.
+patch_prior : 0   #the coefficient of patch prior regularizer
+CLIP_loss : 0.01    #the coefficient of CLIP loss regularizer
+
+bn_stat : 0       #choose if we use bn statistic to regularizer 
+
+max_iterations : 24000    #Maximum number of iterations for reconstruction.
+
+use_saved_models : False  # whether to use saved models or not
+model_load_dir : '/home/ubuntu/mnt-disk/repos/FedCola/results/FedCola/FedCola_250805_023340'  # the directory to load saved models from
+
+save_intermediate_at_img : 2000  # the interval at which to save intermediate results, -1 for no intermediate saving
+save_intermediate_at_txt : -1  # the interval at which to save intermediate results, -1 for no intermediate saving
+save_model : False  # whether to save the model or not
+
+gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
+
+# For input data
+generative_model : ''
+gen_dataset : 'ImageNet64'    # ['ImageNet64', 'FFHQ64']
+dataset : 'Flickr30k_img'   # ['Flickr30k', 'Flickr30k_img', 'Flickr30k_txt']     
+data_path : 'N/A'  # specify your dataset path
+
+#For output data
+exp_name : 'ex1_FedCola_flickr30k_img'   #Same latent space search
+output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
+
+#Choice for GAN-free methods
+geiping : true
+yin : false
+
+train_epochs: 2
+our_num_tries : 10
+#Defense parameter
+defense_method : None
+defense_setting : 
+    noise : None
+    clipping : None
+    compression : None
+    representation : None
+    orthogonal : null
+
+
+# The pre-trained StyleGAN checkpoint
+ckpt: None
+
+#LR pace for training
+lr_same_pace: false

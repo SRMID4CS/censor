@@ -71,6 +71,7 @@ nclass_dict = {'I32': 1000, 'I64': 1000, 'I128': 1000,
                'CIFAR10': 10, 'CIFAR100': 100, 'CIFAR100_MM': 100, 'CA': 8, 'ImageNet':1000, 'IMAGENET_IO' : 1000,
                'FFHQ': 10, 'FFHQ64': 10, 'FFHQ128': 10, 'OOD_FFHQ':10, 'OOD_IMAGENET':1000,
                'Coco': 25499, 'Coco_img': 25499, 'Coco_txt': 25499,
+               'Flickr30k': 31783, 'Flickr30k_img': 31783, 'Flickr30k_txt': 31783,
                }
 # Parse input arguments
 

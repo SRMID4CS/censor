@@ -2,6 +2,7 @@
 
 
 from FedCola.src.datasets.coco import fetch_coco
+from FedCola.src.datasets.flickr30k import fetch_flickr30k
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -106,6 +107,24 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
 
         transforms = [_get_transform(args, train=True), _get_transform(args, train=False)]
         trainset, validset, args = fetch_coco(args=args, root=args.data_path, transforms=transforms, tokenizer=tokenizer, modality=modality)
+    elif 'Flickr30k' in dataset:
+        # check modality if needed
+        if dataset == 'Flickr30k_img':
+            modality = 'img'
+            loss_fn = Classification()
+        elif dataset == 'Flickr30k_txt':
+            modality = 'txt'
+            loss_fn = Classification()
+        else:
+            modality = 'img+txt'
+            loss_fn = torch.nn.functional.cosine_embedding_loss # torch.nn.ContrastiveLoss()
+        
+        tokenizer = BertTokenizer.from_pretrained(
+            'bert-base-uncased', do_lower_case="uncased" in 'bert_base_uncased'
+        )
+
+        transforms = [_get_transform(args, train=True), _get_transform(args, train=False)]
+        trainset, validset, args = fetch_flickr30k(args=args, root=args.data_path, transforms=transforms, tokenizer=tokenizer, modality=modality)
 
     if MULTITHREAD_DATAPROCESSING:
         num_workers = min(torch.get_num_threads(), MULTITHREAD_DATAPROCESSING) if torch.get_num_threads() > 1 else 0
