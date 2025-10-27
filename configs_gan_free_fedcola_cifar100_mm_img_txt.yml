@@ -3,7 +3,7 @@ Introduction: 'GAN-free methods for gradient inversion attack on CIFAR-100 with 
 optim: 'GAN_free'    #optim method, ['GAN_based', 'GAN_free']
 cost_fn: 'sim_cmpr0'   #the type of loss function 
 set_seed:       # random seed. Following geiping et. al., we do not give random seed for GAN-free methods.
-indices: 'def' # 'fedcola_img_block'      #decide which part of gradients to be involved in the final gradients match loss.
+indices: 'fedcola_img_emb' # 'fedcola_img_block'      #decide which part of gradients to be involved in the final gradients match loss.
 weights: 'equal'    #weight of every graident scalar's matching loss
 init: 'randn'     #how we initial the original latent code.
 init_text: 'randn'    #how we initial the original latent code of text embedding.
@@ -13,18 +13,18 @@ restarts: 4
 num_images: 1   # the number of images to reconstruct at a batch
 num_exp: 1     # the number of experiments
 target_id: 10 # the target image id + iterative incrementation of id
-target_id_increment: 5 # the incrementation of target image id
+target_id_increment: 1 # the incrementation of target image id
 unrelated_target_offset: -1 # the offset for unrelated target
 lr: 0.1            #learning rate for Yin et al.
 total_variation: 0.0001     #the coefficient of total variation 
 image_norm: 0.000001    #the coefficient of norm regularizer for Yin et al.
 group_lazy: 0.01    #choose if we use group lazy regularization for Yin et al.
-patch_prior: 0   #the coefficient of patch prior regularizer
-CLIP_loss: 0.01    #the coefficient of CLIP loss regularizer
+patch_prior: 0.0001   #the coefficient of patch prior regularizer
+CLIP_loss: 0 #0.01    #the coefficient of CLIP loss regularizer
 
 bn_stat: 0       #choose if we use bn statistic to regularizer 
 
-max_iterations: 24000    #Maximum number of iterations for reconstruction.
+max_iterations: 10    #Maximum number of iterations for reconstruction.
 
 use_saved_models: False  # whether to use saved models or not
 model_load_dir: '/home/ubuntu/mnt-disk/repos/FedCola/results/FedCola/FedCola_250805_023340'  # the directory to load saved models from
@@ -49,7 +49,7 @@ output_dir: '/home/ubuntu/mnt-disk/results/censor-fedcola'
 geiping: true
 yin: false
 
-train_epochs: 2
+train_epochs: 1
 our_num_tries: 10
 #Defense parameter
 defense_method: None
