@@ -44,3 +44,12 @@ coco_img_std = [0.229, 0.224, 0.225]
 
 coco_txt_mean = [0]
 coco_txt_std = [1]
+
+flickr30k_mean = [0.485, 0.456, 0.406]
+flickr30k_std = [0.229, 0.224, 0.225]
+
+flickr30k_txt_mean = [0.485, 0.456, 0.406]
+flickr30k_txt_std = [0.229, 0.224, 0.225]
+
+flickr30k_img_mean = [0.485, 0.456, 0.406]
+flickr30k_img_std = [0.229, 0.224, 0.225]
