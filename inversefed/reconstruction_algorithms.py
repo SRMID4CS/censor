@@ -420,7 +420,7 @@ class GradientReconstructor():
             logger.info(f"x: {n_x}")
         self.n_trainable = n_z + n_G + n_x + n_noise
 
-    def reconstruct(self, input_data, labels, img_shape=(3, 32, 32), txt_shape=(40,384), dryrun=False, tol=None):
+    def reconstruct(self, input_data, labels, img_shape=(3, 32, 32), txt_shape=(20,384), dryrun=False, tol=None):
         """Reconstruct image from gradient."""
         if torch.is_tensor(input_data[0]):  
             self.input_data = [input_data]
@@ -907,7 +907,7 @@ class GradientReconstructor():
             logger.info(f'Choosing optimal x... : {optimal_index}')
             return None, scores[optimal_index].item(), x[optimal_index].clone(), None, _labels[optimal_index].clone() if _labels is not None else None
 
-    def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500, txt_shape=(40,384)):
+    def reconstruct_by_latentCode(self, dummy_z, labels, img_shape, dryrun, max_iterations=500, txt_shape=(20,384)):
         self.model.eval()
 
         data_holder = DataHolder()
@@ -1485,7 +1485,7 @@ class GradientReconstructor():
         last_weight_min = torch.argsort(torch.sum(input_gradient[-2], dim=-1), dim=-1)[:num_inputs]
         labels = torch.sort(last_weight_min.detach().reshape((-1,)).requires_grad_(False))[0]     # Use sort to adjust the order of labels as the same to grouth truth 
         return labels
-    
+
     def clip_similarity(self, image, text, device='cuda'):
         # Convert tensor to proper format for CLIP processor  
         if isinstance(image, torch.Tensor):
