@@ -73,10 +73,11 @@ class Flickr30kCap(Dataset):
         if num_samples > len(self):
             raise ValueError(f"num_samples ({num_samples}) cannot be greater than the dataset size ({len(self)}).")
         
-        sampled = np.random.choice(len(self), num_samples, replace=False)
+        # Use negative indexing to get the last num_samples items (consistent with COCO)
+        sampled = np.arange(0, num_samples)
 
-        self.images = list(np.array(self.images)[sampled])
-        self.captions = list(np.array(self.captions)[sampled])
+        self.images = list(operator.itemgetter(*sampled)(self.images))
+        self.captions = list(operator.itemgetter(*sampled)(self.captions))
         self.n_images = len(set(self.images))
         logger.info(f'[LOAD] [FLICKR] Reduced dataset to {num_samples} samples!')
 
