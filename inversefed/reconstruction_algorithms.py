@@ -27,7 +27,7 @@ from inversefed.consts import STYLE_LEN
 import nevergrad as ng
 import numpy as np
 
-from utils.text_utils import de_embed_text, get_text_from_tokens
+from utils.text_utils import de_embed_text, get_text_from_tokens, get_true_length, infer_label_length_convergence, infer_label_perfect_match
 
 import logging
 
@@ -104,6 +104,7 @@ DEFAULT_CONFIG = dict(signed=False,
                       model = "N/A",  # Model name, used for loading the model
                       save_intermediate_at_img=1000,  # the interval at which to save intermediate results, -1 for no intermediate saving
                       save_intermediate_at_txt=100,  # the interval at which to save intermediate results, -1 for no intermediate saving
+                      stop_at_text_perf_match=False,
                       )
 
 def _validate_config(config):
@@ -941,8 +942,8 @@ class GradientReconstructor():
                     'length_iter': -1,
                     'perf_iter': -1,
                     'inferred_length': -1,
-                    'true_length': get_true_length(data_holder.get('ground_truth_text')[nn], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
-                } for nn in range(self.config['num_images'])]
+                    'true_length': get_true_length(data_holder.get('ground_truth_text')[nn].unsqueeze(0))
+                } for nn in range(self.num_images)]
 
             for trial in range(self.config['restarts']):
                 _x[trial] = x[trial]
@@ -1131,7 +1132,7 @@ class GradientReconstructor():
                                         label_convergence_metrics[num_img]['inferred_length'] = inferred_length
                                         logger.info(f"Trial {trial}: Length inferred at iteration {iteration}, correct: {is_length_correct}")
                                 if not label_convergence_metrics[num_img]['perfect_match']:
-                                    is_perfect = infer_label_perfect_match(cap_opt[num_img], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'), ground_truth_text_seq=data_holder.get('ground_truth_text')[num_img])
+                                    is_perfect = infer_label_perfect_match(cap_opt[num_img], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'), ground_truth_text_token_ids=data_holder.get('ground_truth_text')[num_img])
                                     if is_perfect:
                                         label_convergence_metrics[num_img]['perfect_match'] = True
                                         label_convergence_metrics[num_img]['perf_iter'] = iteration

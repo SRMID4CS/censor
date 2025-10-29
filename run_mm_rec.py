@@ -311,6 +311,7 @@ if __name__ == "__main__":
                         model=config['model'],
                         save_intermediate_at_img=config['save_intermediate_at_img'],
                         save_intermediate_at_txt=config['save_intermediate_at_txt'],
+                        stop_at_text_perf_match=config['stop_at_text_perf_match'],
                         )
         elif config['optim'] == 'GAN_free':
             config_m = dict(cost_fn=config['cost_fn'],
@@ -343,6 +344,7 @@ if __name__ == "__main__":
                         model=config['model'],
                         save_intermediate_at_img=config['save_intermediate_at_img'],
                         save_intermediate_at_txt=config['save_intermediate_at_txt'],
+                        stop_at_text_perf_match=config['stop_at_text_perf_match'],
                         )
 
         G = None
@@ -438,8 +440,11 @@ if __name__ == "__main__":
             # store ground truth text to be used in mm reconstruction
             # to see impact of perfect text reconstruction
             # and to calculate text metrics : length detection and perfect match halt
-            # if config['model'] == 'FedCola_IMG_TXT' and config['init_text'] == 'ground_truth':
-            data_holder.set('ground_truth_text', labels)
+            if config['model'] == 'FedCola_IMG_TXT' and config['init_text'] == 'ground_truth':
+                data_holder.set('ground_truth_text', labels)
+            elif config['model'] == 'FedCola_TXT':
+                #todo check if labels is tensor or list of tensors
+                data_holder.set('ground_truth_text', ground_truth)
 
             if args.accumulation == 0:
                 logger.info("Ground truth's size:{}".format(ground_truth[0].shape))
@@ -654,8 +659,9 @@ if __name__ == "__main__":
                         for j in range(config['num_images']):
                             recon_sentence_embedding_seq = output_den[j, ...] if config['model'] == 'FedCola_TXT' else label_best[j, ...]
                             # convert to text
-                            recon_sentence = de_embed_text(recon_sentence_embedding_seq, bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
+                            recon_sentence, tokens = de_embed_text(recon_sentence_embedding_seq, bert_embedding=bert_embedding, tokenizer=bert_tokenizer)
                             logger.info(f'Final Recon Sentence : {recon_sentence}')
+                            logger.info(f'Final Recon Tokens : {tokens}')
                             recon_sentence_list.append(recon_sentence)
                             with open(os.path.join(ouput_dir, f'{tid_list[j]}_gen.txt'), 'w') as f:
                                 f.write(recon_sentence)

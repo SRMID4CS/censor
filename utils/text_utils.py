@@ -57,7 +57,7 @@ def get_text_from_tokens(token_ids, tokenizer) -> str:
     return sentence
 
 
-def get_true_length(ground_truth_text, bert_embedding=None, tokenizer=None) -> int:
+def get_true_length(ground_truth_text_token_ids) -> int:
     """
     Get the true length of the ground truth text in terms of token count.
     Args:
@@ -65,18 +65,16 @@ def get_true_length(ground_truth_text, bert_embedding=None, tokenizer=None) -> i
     Returns:
         int: The true length in terms of token count.
     """
-    if tokenizer is None:
-        raise ValueError("Tokenizer must be provided")
 
-    # Tokenize the ground truth text
-    tokenized_text = tokenizer(ground_truth_text, padding=True, truncation=True, return_tensors="pt")
+    if ground_truth_text_token_ids.ndim == 1:
+        ground_truth_text_token_ids = ground_truth_text_token_ids.unsqueeze(0)
 
     # Find length by [cls] and [sep] token positions
     true_length = 0
-    if '[CLS]' in tokenized_text['input_ids']:
-        cls_index = tokenized_text['input_ids'].tolist().index('[CLS]')
-        if '[SEP]' in tokenized_text['input_ids']:
-            sep_index = tokenized_text['input_ids'].tolist().index('[SEP]')
+    if 101 in ground_truth_text_token_ids[0].tolist():
+        cls_index = ground_truth_text_token_ids[0].tolist().index(101)
+        if 102 in ground_truth_text_token_ids[0].tolist():
+            sep_index = ground_truth_text_token_ids[0].tolist().index(102)
             true_length = sep_index - cls_index + 1  # +1 to include [SEP] token
 
     return true_length
@@ -102,7 +100,7 @@ def infer_label_length_convergence(sentence_embedding_seq, bert_embedding=None, 
     is_length_correct = (inferred_length == true_length)  # Replace with actual correctness check
     return inferred_length, is_length_correct
 
-def infer_label_perfect_match(sentence_embedding_seq, bert_embedding=None, tokenizer=None, ground_truth_text_seq=None) -> bool:
+def infer_label_perfect_match(sentence_embedding_seq, bert_embedding=None, tokenizer=None, ground_truth_text_token_ids=None) -> bool:
     """
     Infer if the reconstructed text perfectly matches the ground truth text.
     Args:
@@ -112,10 +110,13 @@ def infer_label_perfect_match(sentence_embedding_seq, bert_embedding=None, token
     """
     if tokenizer is None:
         raise ValueError("Tokenizer must be provided")
+    
+    if ground_truth_text_token_ids.ndim == 1:
+        ground_truth_text_token_ids = ground_truth_text_token_ids.unsqueeze(0)
 
     # match only between [cls] and [sep] tokens
     reconstructed_text, tokens = de_embed_text(sentence_embedding_seq, bert_embedding, tokenizer)
-    ground_truth_text, ground_truth_tokens = de_embed_text(ground_truth_text_seq, bert_embedding, tokenizer)
+    
 
     cls_token_pos = tokens.index("[CLS]") if "[CLS]" in tokens else -1
     sep_token_pos = tokens.index("[SEP]") if "[SEP]" in tokens else -1
@@ -124,12 +125,13 @@ def infer_label_perfect_match(sentence_embedding_seq, bert_embedding=None, token
     else:
         reconstructed_text_trim = ""  # Unable to extract valid text for comparison
 
-    gt_cls_token_pos = ground_truth_tokens.index("[CLS]") if "[CLS]" in ground_truth_tokens else -1
-    gt_sep_token_pos = ground_truth_tokens.index("[SEP]") if "[SEP]" in ground_truth_tokens else -1
+    gt_cls_token_pos = ground_truth_text_token_ids[0].tolist().index(101) if 101 in ground_truth_text_token_ids[0].tolist() else -1
+    gt_sep_token_pos = ground_truth_text_token_ids[0].tolist().index(102) if 102 in ground_truth_text_token_ids[0].tolist() else -1
     if gt_cls_token_pos != -1 and gt_sep_token_pos != -1:
-        ground_truth_text_trim = tokenizer.convert_tokens_to_string(ground_truth_tokens[gt_cls_token_pos:gt_sep_token_pos + 1])
+        gt_tokens = tokenizer.convert_ids_to_tokens(ground_truth_text_token_ids[0][gt_cls_token_pos:gt_sep_token_pos + 1])
+        ground_truth_text_trim = tokenizer.convert_tokens_to_string(gt_tokens)
     else:
         ground_truth_text_trim = ""  # Unable to extract valid text for comparison
 
     # Check for perfect match
-    return reconstructed_text_trim == ground_truth_text_trim
+    return reconstructed_text_trim == ground_truth_text_trim and reconstructed_text_trim != ""
