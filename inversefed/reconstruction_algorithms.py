@@ -933,6 +933,17 @@ class GradientReconstructor():
             if self.config['model'] == 'FedCola_IMG_TXT':
                 _labels = [None for _ in range(self.config['restarts'])]
 
+            if self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_TXT' and init_txt != 'ground_truth':
+                # TODO : check of num images / batches later
+                label_convergence_metrics = [{
+                    'length_infered': False,
+                    'perfect_match': False,
+                    'length_iter': -1,
+                    'perf_iter': -1,
+                    'inferred_length': -1,
+                    'true_length': get_true_length(data_holder.get('ground_truth_text')[nn], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                } for nn in range(self.config['num_images'])]
+
             for trial in range(self.config['restarts']):
                 _x[trial] = x[trial]
                 if self.config['model'] == 'FedCola_IMG_TXT':
@@ -1075,7 +1086,7 @@ class GradientReconstructor():
                             logger.info(f'Saving intermediate TXT at iteration {iteration}...')
                             if self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_text'] != 'ground_truth':
                                 for num_txt in range(self.num_images):
-                                    recon_sentence = de_embed_text(labels_opt[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                                    recon_sentence, tokens = de_embed_text(labels_opt[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                                     logger.info(f'Recon Sentence : {recon_sentence}')
                                     dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
                                     os.makedirs(dir_path, exist_ok=True)
@@ -1085,7 +1096,7 @@ class GradientReconstructor():
                             logger.info(f'Saving intermediate TXT at iteration {iteration}...')
                             if self.config['model'] == 'FedCola_TXT':
                                 for num_txt in range(self.num_images):
-                                    recon_sentence = de_embed_text(imgs[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                                    recon_sentence, tokens = de_embed_text(imgs[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                                     logger.info(f'Recon Sentence : {recon_sentence}')
                                     dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
                                     os.makedirs(dir_path, exist_ok=True)
@@ -1104,6 +1115,34 @@ class GradientReconstructor():
 
 
                         _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
+
+                        # check length convergence and perfect match convergence for text
+                        if (self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_TXT') and self.config['init_text'] != 'ground_truth' and iteration % 50 == 0:
+                            if self.config['model'] == 'FedCola_TXT':
+                                cap_opt = _x[trial]
+                            else:
+                                cap_opt = _labels[trial]
+                            for num_img in range(self.num_images):
+                                if not label_convergence_metrics[num_img]['length_infered']:
+                                    inferred_length, is_length_correct = infer_label_length_convergence(cap_opt[num_img], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'), true_length=label_convergence_metrics[num_img]['true_length'])
+                                    if inferred_length > 0:
+                                        label_convergence_metrics[num_img]['length_infered'] = is_length_correct
+                                        label_convergence_metrics[num_img]['length_iter'] = iteration
+                                        label_convergence_metrics[num_img]['inferred_length'] = inferred_length
+                                        logger.info(f"Trial {trial}: Length inferred at iteration {iteration}, correct: {is_length_correct}")
+                                if not label_convergence_metrics[num_img]['perfect_match']:
+                                    is_perfect = infer_label_perfect_match(cap_opt[num_img], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'), ground_truth_text_seq=data_holder.get('ground_truth_text')[num_img])
+                                    if is_perfect:
+                                        label_convergence_metrics[num_img]['perfect_match'] = True
+                                        label_convergence_metrics[num_img]['perf_iter'] = iteration
+                                        logger.info(f"Trial {trial}: Perfect match achieved at iteration {iteration}")
+                            # stop condition if any perfect matched trial achieved for all num images
+                            if self.config['stop_at_text_perf_match']:
+                                all_perf_matched = all([label_convergence_metrics[num_img]['perfect_match'] for num_img in range(self.num_images)])
+                                if all_perf_matched:
+                                    data_holder.set('label_convergence_metrics', label_convergence_metrics)
+                                    logger.info("Perfect text match achieved, stopping optimization.")
+                                    dryrun = True
 
                     if dryrun:
                         break
@@ -1411,7 +1450,7 @@ class GradientReconstructor():
                     dm, ds = self.mean_std
                     x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
                     if self.config['init_text'] != 'ground_truth':
-                        recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                        recon_sentence, tokens = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     else:
                         recon_sentence = get_text_from_tokens(batch_label[0], tokenizer=data_holder.get('bert_tokenizer'))
                     clip_loss = 1 - self.clip_similarity(x_trial_clamp.detach(), recon_sentence, device=self.device)
@@ -1589,7 +1628,7 @@ class FedAvgReconstructor(GradientReconstructor):
                 if self.config['CLIP_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
                     dm, ds = self.mean_std
                     x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
-                    recon_sentence = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                    recon_sentence, tokens = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     clip_loss = 1 - self.clip_similarity(x_trial_clamp.detach(), recon_sentence, device=self.device)
                     rec_loss += self.config['CLIP_loss'] * clip_loss
                     losses[6] = clip_loss.item()

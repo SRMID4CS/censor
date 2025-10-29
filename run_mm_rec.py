@@ -437,8 +437,9 @@ if __name__ == "__main__":
 
             # store ground truth text to be used in mm reconstruction
             # to see impact of perfect text reconstruction
-            if config['model'] == 'FedCola_IMG_TXT' and config['init_text'] == 'ground_truth':
-                data_holder.set('ground_truth_text', labels)
+            # and to calculate text metrics : length detection and perfect match halt
+            # if config['model'] == 'FedCola_IMG_TXT' and config['init_text'] == 'ground_truth':
+            data_holder.set('ground_truth_text', labels)
 
             if args.accumulation == 0:
                 logger.info("Ground truth's size:{}".format(ground_truth[0].shape))
@@ -695,10 +696,11 @@ if __name__ == "__main__":
 
                     bleu_result = bleu_scorer.compute(predictions=recon_sentence_list, references=[sentence])
                     rouge_result = rouge_scorer.compute(predictions=recon_sentence_list, references=[sentence])
+                    label_convergence_metrics = data_holder.get('label_convergence_metrics', default={})
 
                     print("BLEU score:", bleu_result)
                     print("ROUGE score:", rouge_result)
-                    inversefed.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result)
+                    inversefed.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result, **label_convergence_metrics[j])
                 else:
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
             #one row represents psnrs of a batch
