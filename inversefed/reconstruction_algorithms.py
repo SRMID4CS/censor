@@ -1137,11 +1137,11 @@ class GradientReconstructor():
                                         label_convergence_metrics[num_img]['perfect_match'] = True
                                         label_convergence_metrics[num_img]['perf_iter'] = iteration
                                         logger.info(f"Trial {trial}: Perfect match achieved at iteration {iteration}")
+                            data_holder.set('label_convergence_metrics', label_convergence_metrics)
                             # stop condition if any perfect matched trial achieved for all num images
                             if self.config['stop_at_text_perf_match']:
                                 all_perf_matched = all([label_convergence_metrics[num_img]['perfect_match'] for num_img in range(self.num_images)])
                                 if all_perf_matched:
-                                    data_holder.set('label_convergence_metrics', label_convergence_metrics)
                                     logger.info("Perfect text match achieved, stopping optimization.")
                                     dryrun = True
 

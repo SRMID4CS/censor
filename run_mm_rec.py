@@ -440,7 +440,7 @@ if __name__ == "__main__":
             # store ground truth text to be used in mm reconstruction
             # to see impact of perfect text reconstruction
             # and to calculate text metrics : length detection and perfect match halt
-            if config['model'] == 'FedCola_IMG_TXT' and config['init_text'] == 'ground_truth':
+            if config['model'] == 'FedCola_IMG_TXT' and config['init_text'] != 'ground_truth':
                 data_holder.set('ground_truth_text', labels)
             elif config['model'] == 'FedCola_TXT':
                 #todo check if labels is tensor or list of tensors
@@ -706,6 +706,8 @@ if __name__ == "__main__":
 
                     print("BLEU score:", bleu_result)
                     print("ROUGE score:", rouge_result)
+                    print("Label convergence metrics:", label_convergence_metrics)
+
                     inversefed.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result, **label_convergence_metrics[j])
                 else:
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))

@@ -135,3 +135,4 @@ def infer_label_perfect_match(sentence_embedding_seq, bert_embedding=None, token
 
     # Check for perfect match
     return reconstructed_text_trim == ground_truth_text_trim and reconstructed_text_trim != ""
+    
