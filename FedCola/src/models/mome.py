@@ -576,7 +576,7 @@ class Embedding(nn.Module):
         raise NotImplementedError
 
 class ImageEmbedding(Embedding):
-    def __init__(self, img_size, patch_size, in_chans, embed_dim, drop_rate, *args, **kwargs) -> None:
+    def __init__(self, img_size, patch_size, in_chans, embed_dim, drop_rate, freeze_patch_embeddings=False, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.embed = PatchEmbed(
@@ -593,6 +593,14 @@ class ImageEmbedding(Embedding):
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+
+        # Freeze patch embeddings if specified
+        if freeze_patch_embeddings:
+            for param in self.embed.parameters():
+                param.requires_grad = False
+            # Also freeze positional embeddings and class token if desired
+            self.pos_embed.requires_grad = False
+            self.cls_token.requires_grad = False
 
     def forward(self, _x):
         x = self.embed(_x)
@@ -613,7 +621,7 @@ class ImageEmbedding(Embedding):
 
 class TextEmbedding(Embedding):
 
-        def __init__(self, vocab_size, num_features, max_text_len, drop_path_rate, *args, **kwargs) -> None:
+        def __init__(self, vocab_size, num_features, max_text_len, drop_path_rate, freeze_bert_embeddings=False, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
 
             bert_config = BertConfig(
@@ -626,6 +634,11 @@ class TextEmbedding(Embedding):
 
             self.text_embeddings = BertEmbeddings(bert_config)
             
+            # Freeze BERT embeddings if specified
+            if freeze_bert_embeddings:
+                for param in self.text_embeddings.parameters():
+                    param.requires_grad = False
+        
             self.modality = 'txt'
 
             # self.cls_token = nn.Parameter(torch.zeros(1, 1, num_features)) # Not needed since the tokenizer will give u the cls token.
@@ -703,6 +716,8 @@ class ModalityAgnosticTransformer(nn.Module):
                  shared_start_index=-1,
                  layer_scale_init_values=None,
                  block_fn=Block,
+                 freeze_bert_embeddings=False,
+                 freeze_patch_embeddings=False,
                  *args, **kwargs) -> None:
         super().__init__()
 
@@ -727,9 +742,9 @@ class ModalityAgnosticTransformer(nn.Module):
         self.modalities = modalities
         for modality in modalities:
             if modality == 'img':
-                self.embeddings.append(ImageEmbedding(img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim, drop_rate=drop_rate))
+                self.embeddings.append(ImageEmbedding(img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim, drop_rate=drop_rate, freeze_patch_embeddings=freeze_patch_embeddings))
             elif modality == 'txt':
-                self.embeddings.append(TextEmbedding(vocab_size=vocab_size, num_features=embed_dim, max_text_len=max_text_len, drop_path_rate=drop_rate))
+                self.embeddings.append(TextEmbedding(vocab_size=vocab_size, num_features=embed_dim, max_text_len=max_text_len, drop_path_rate=drop_rate, freeze_bert_embeddings=freeze_bert_embeddings))
             elif modality is None:
                 self.embeddings.append(None)
             else:
@@ -972,6 +987,8 @@ def mome_small_patch16(pretrained, args, **kwargs):
                 shared_param=args.shared_param,
                 share_scope=args.share_scope,
                 colearn_param=args.colearn_param,
+                freeze_bert_embeddings=args.freeze_bert_embeddings,
+                freeze_patch_embeddings=args.freeze_patch_embeddings,
                 **kwargs
                 )
     model.sync_shared_weights()
@@ -993,6 +1010,8 @@ def mome_tiny_patch16(pretrained, args, **kwargs):
                     shared_param=args.shared_param,
                     share_scope=args.share_scope,
                     colearn_param=args.colearn_param,
+                    freeze_bert_embeddings=args.freeze_bert_embeddings,
+                    freeze_patch_embeddings=args.freeze_patch_embeddings,
                     **kwargs
                     )
         model.sync_shared_weights()
@@ -1014,6 +1033,8 @@ def mome_small_patch16_224_in21k(pretrained, args, **kwargs):
                 shared_param=args.shared_param,
                 share_scope=args.share_scope,
                 colearn_param=args.colearn_param,
+                freeze_bert_embeddings=args.freeze_bert_embeddings,
+                freeze_patch_embeddings=args.freeze_patch_embeddings,
                 **kwargs
                 )
     model.sync_shared_weights()
@@ -1035,6 +1056,8 @@ def mome_base_patch16_224_ours(pretrained, args, **kwargs):
                 drop_path_rate=args.dropout,
                 share_strategy=args.strategy,
                 colearn_param=args.colearn_param,
+                freeze_bert_embeddings=args.freeze_bert_embeddings,
+                freeze_patch_embeddings=args.freeze_patch_embeddings,
                 **kwargs)
     if pretrained:
         model.pretrain_vit(['vit_small_patch16_224_ours', None])
@@ -1054,6 +1077,8 @@ def mome_toy_patch16_224(pretrained, args, **kwargs):
                 shared_param=args.shared_param,
                 share_scope=args.share_scope,
                 colearn_param=args.colearn_param,
+                freeze_bert_embeddings=args.freeze_bert_embeddings,
+                freeze_patch_embeddings=args.freeze_patch_embeddings,
                 **kwargs)
     model.sync_shared_weights()
 
@@ -1074,6 +1099,8 @@ def mome_small_patch8(pretrained, args, **kwargs):
                 shared_param=args.shared_param,
                 share_scope=args.share_scope,
                 colearn_param=args.colearn_param,
+                freeze_bert_embeddings=args.freeze_bert_embeddings,
+                freeze_patch_embeddings=args.freeze_patch_embeddings,
                 **kwargs
                 )
     model.sync_shared_weights()
@@ -1096,6 +1123,8 @@ def mome_small_patch32(pretrained, args, **kwargs):
                 shared_param=args.shared_param,
                 share_scope=args.share_scope,
                 colearn_param=args.colearn_param,
+                freeze_bert_embeddings=args.freeze_bert_embeddings,
+                freeze_patch_embeddings=args.freeze_patch_embeddings,
                 **kwargs
                 )
     model.sync_shared_weights()

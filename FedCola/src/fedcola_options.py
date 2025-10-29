@@ -154,7 +154,10 @@ def add_fedcola_args(parser):
     parser.add_argument('--embedding_size', help='output dimension of an embedding layer', type=int, default=512)
     parser.add_argument('--init_type', help='weight initialization method', type=str, default='kaiming', choices=['normal', 'xavier', 'xavier_uniform', 'kaiming', 'orthogonal', 'truncnorm', 'none'])
     parser.add_argument('--init_gain', type=float, default=1.0, help='magnitude of variance used for weight initialization')
-    
+
+    parser.add_argument('--freeze_bert_embeddings', help='freeze BERT embeddings during training (if passed)', action='store_true')
+    parser.add_argument('--freeze_patch_embeddings', help='freeze ViT patch embeddings during training (if passed)', action='store_true')
+
     ######################
     # Learning arguments #
     ######################
