@@ -743,6 +743,10 @@ class GradientReconstructor():
             else:
                 labels_opt = labels
 
+            # make cond_vector trainable for BigGAN
+            self.ys[trial].requires_grad = True
+            optim_param.append(self.ys[trial])
+
             for param in optim_param:
                 param.requires_grad = True
 
@@ -957,6 +961,10 @@ class GradientReconstructor():
                         to_optimize = [dummy_z[trial], _labels[trial]]
                     else:
                         to_optimize = [dummy_z[trial]]
+
+                    if self.generative_model_name in ['BigGAN']:
+                        self.ys[trial].requires_grad = True
+                        to_optimize.append(self.ys[trial])
 
                     if self.config['optim'] == 'adam':
                         optimizer[trial] = torch.optim.Adam(to_optimize, lr=self.config['lr'])
