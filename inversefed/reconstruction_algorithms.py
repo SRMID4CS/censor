@@ -570,9 +570,9 @@ class GradientReconstructor():
             self.noises = deepcopy(self.initial_noises)
         elif self.generative_model_name in ['BigGAN']:
             if labels is None:
-                self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
+                self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).float().to(self.device) for i in range(self.config['restarts'])]
             else:
-                self.ys = [torch.nn.functional.one_hot(labels, num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
+                self.ys = [torch.nn.functional.one_hot(labels, num_classes=1000).float().to(self.device) for i in range(self.config['restarts'])]
 
         self.gen_outs = [[None] for i in range(self.config['restarts'])]
 

@@ -31,6 +31,7 @@
 
   save_intermediate_at_img : 10  # the interval at which to save intermediate results, -1 for no intermediate saving
   save_intermediate_at_txt : 10  # the interval at which to save intermediate results, -1 for no intermediate saving
+  stop_at_text_perf_match : False  # whether to stop optimization when text is perfectly matched
 
   #For GIAS
   gias_iterations : 8000  #Maximum number of gias iterations for reconstruction.

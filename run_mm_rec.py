@@ -708,7 +708,10 @@ if __name__ == "__main__":
                     print("ROUGE score:", rouge_result)
                     print("Label convergence metrics:", label_convergence_metrics)
 
-                    inversefed.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result, **label_convergence_metrics[j])
+                    if label_convergence_metrics == {}:
+                        inversefed.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result)
+                    else:
+                        inversefed.utils.save_to_table(os.path.join(save_dir), name=f'Metrics_Text', dryrun=args.dryrun, target_id=int(tid_list[j]), **bleu_result, **rouge_result, **label_convergence_metrics[j])
                 else:
                     torchvision.utils.save_image(ground_truth_den[j:j + 1, ...], os.path.join(save_dir, f'{tid_list[j]}_gt.png'))
             #one row represents psnrs of a batch
