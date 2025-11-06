@@ -1665,6 +1665,9 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
             dm, ds = self.mean_std
             early_stopping = False
 
+            x_i_hat_to_opt = [None for _ in range(self.config['restarts'])]
+            x_t_hat_to_opt = [None for _ in range(self.config['restarts'])]
+
             image_optimizer = [None for _ in range(self.config['restarts'])]
             text_optimizer = [None for _ in range(self.config['restarts'])]
 
