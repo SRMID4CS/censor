@@ -1661,20 +1661,29 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
             if self.G:
                     self.G.to(self.device)
 
-            # initialize optimizers
-            image_optimizer = [torch.optim.Adam([x_i_hat[trial]], lr=self.config['img_lr']) for trial in range(self.config['restarts'])]
-            text_optimizer = [torch.optim.Adam([x_t_hat[trial]], lr=self.config['txt_lr']) for trial in range(self.config['restarts'])]
 
             dm, ds = self.mean_std
             early_stopping = False
 
+            image_optimizer = [None for _ in range(self.config['restarts'])]
+            text_optimizer = [None for _ in range(self.config['restarts'])]
+
+            for trial in range(self.config['restarts']):
+                x_i_hat_to_opt[trial] = x_i_hat[trial]
+                x_t_hat_to_opt[trial] = x_t_hat[trial]
+                x_i_hat_to_opt[trial].requires_grad_(True)
+                x_t_hat_to_opt[trial].requires_grad_(True)
+
+                # initialize optimizers
+                image_optimizer[trial] = torch.optim.Adam([x_i_hat_to_opt[trial]], lr=self.config['img_lr'])
+                text_optimizer[trial] = torch.optim.Adam([x_t_hat_to_opt[trial]], lr=self.config['txt_lr'])
+
+
             for iteration in range(self.max_iterations):
                 for trial in range(self.config['restarts']):
-                    x_i_hat[trial].requires_grad_(True)
-                    x_t_hat[trial].requires_grad_(True)
-                    x_i_trial = x_i_hat[trial]
-                    x_t_trial = x_t_hat[trial]
-                    
+                    x_i_hat_to_opt[trial] = x_i_hat[trial]
+                    x_t_hat_to_opt[trial] = x_t_hat[trial]
+
                     # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                     image_losses = [0, 0, 0, 0, 0, 0, 0]
                     text_losses = [0, 0, 0, 0, 0, 0, 0]
@@ -1683,27 +1692,27 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                         dummy_z_trial = self.dummy_z_global[trial]
 
                         if self.generative_model_name in ['stylegan2','stylegan2-ada','stylegan2-ada-untrained']:
-                            x_i_trial = self.gen_dummy_data(self.G_synthesis, self.generative_model_name, dummy_z_trial)
+                            x_t_hat_to_opt[trial] = self.gen_dummy_data(self.G_synthesis, self.generative_model_name, dummy_z_trial)
 
                         elif self.generative_model_name in ['stylegan2_io']:
-                            x_i_trial = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial, noise=self.noises[trial])
+                            x_i_hat_to_opt[trial] = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial, noise=self.noises[trial])
 
                         elif self.generative_model_name in ['BigGAN']:  #For gias over BigGAN
-                            x_i_trial = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial, ys=self.ys[trial])
+                            x_i_hat_to_opt[trial] = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial, ys=self.ys[trial])
                         else:
-                            x_i_trial = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial)
+                            x_i_hat_to_opt[trial] = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial)
                         self.dummy_z = dummy_z_trial
                         
                     else:
                         self.dummy_z = None
     
                     if self.config['img_recon_method'] == 'GAN_free' and iteration < self.img_max_iterations:
-                        image_closure = self._gradient_closure(image_optimizer[trial], x_i_trial, self.input_data, x_t_trial.detach().clone(), image_losses, indices=self.config.get('img_indices'))
+                        image_closure = self._gradient_closure(image_optimizer[trial], x_i_hat_to_opt[trial], self.input_data, x_t_hat_to_opt[trial].detach().clone(), image_losses, indices=self.config.get('img_indices'))
                         image_rec_loss = image_optimizer[trial].step(image_closure)
                         image_rec_loss = image_rec_loss.item()
 
                     if self.config['txt_recon_method'] == 'GAN_free' and iteration < self.txt_max_iterations:
-                        text_closure = self._gradient_closure(text_optimizer[trial], x_i_trial.detach().clone(), self.input_data, x_t_trial, text_losses, indices=self.config.get('txt_indices'))
+                        text_closure = self._gradient_closure(text_optimizer[trial], x_i_hat_to_opt[trial].detach().clone(), self.input_data, x_t_hat_to_opt[trial], text_losses, indices=self.config.get('txt_indices'))
                         text_rec_loss = text_optimizer[trial].step(text_closure)
                         text_rec_loss = text_rec_loss.item()
 
@@ -1713,11 +1722,11 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                             for num_img in range(self.num_images):
                                 dir_path = os.path.join(data_holder.get('save_dir'), f'{num_img}/')
                                 os.makedirs(dir_path, exist_ok=True)
-                                torchvision.utils.save_image(torch.clamp(x_i_trial.detach().clone() * ds + dm, 0, 1)[num_img:num_img + 1, ...], os.path.join(dir_path, f'{num_img}_trial_{trial}_it_{iteration}.png'))
+                                torchvision.utils.save_image(torch.clamp(x_i_hat_to_opt[trial].detach().clone() * ds + dm, 0, 1)[num_img:num_img + 1, ...], os.path.join(dir_path, f'{num_img}_trial_{trial}_it_{iteration}.png'))
                         if self.config['save_intermediate_at_txt'] > 0 and (iteration % self.config['save_intermediate_at_txt'] == 0):
                             logger.info(f'Saving intermediate TXT at iteration {iteration}...')
                             for num_txt in range(self.num_images):
-                                recon_sentence, tokens = de_embed_text(x_t_trial[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                                recon_sentence, tokens = de_embed_text(x_t_hat_to_opt[trial][num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                                 logger.info(f'Recon Sentence : {recon_sentence}')
                                 dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
                                 os.makedirs(dir_path, exist_ok=True)
@@ -1730,11 +1739,11 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                             if self.config['z_norm'] > 0:
                                 logger.info(torch.norm(dummy_z[trial], 2).item())
 
-                        x_i_trial.data = torch.max(torch.min(x_i_trial, (1 - dm) / ds), -dm / ds)
+                        x_i_hat_to_opt[trial].data = torch.max(torch.min(x_i_hat_to_opt[trial], (1 - dm) / ds), -dm / ds)
 
                         # check length convergence and perfect match convergence for text
                         if (self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_TXT') and self.config['init_text'] != 'ground_truth' and iteration % 50 == 0:
-                            cap_opt = x_t_trial.detach().clone()
+                            cap_opt = x_t_hat_to_opt[trial].detach().clone()
                             for num_img in range(self.num_images):
                                 if not label_convergence_metrics[num_img]['length_infered']:
                                     inferred_length, is_length_correct = infer_label_length_convergence(cap_opt[num_img], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'), true_length=label_convergence_metrics[num_img]['true_length'])
