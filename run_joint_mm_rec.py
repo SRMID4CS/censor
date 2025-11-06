@@ -380,6 +380,8 @@ if __name__ == "__main__":
                     stop_at_text_perf_match=config['stop_at_text_perf_match'],
                     img_lr=config['img_lr'],
                     txt_lr=config['txt_lr'],
+                    img_recon_method=config['img_recon_method'],
+                    txt_recon_method=config['txt_recon_method'],
                     img_max_iterations=config['img_max_iterations'],
                     txt_max_iterations=config['txt_max_iterations'],
                     img_indices=config['img_indices'],

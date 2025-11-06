@@ -107,6 +107,8 @@ DEFAULT_CONFIG = dict(signed=False,
                       stop_at_text_perf_match=False,
                       img_lr=0.1,
                       txt_lr=0.1,
+                      img_recon_method='GAN_free',
+                      txt_recon_method='GAN_free',
                       img_max_iterations=10,
                       txt_max_iterations=10,
                       img_indices='fedcola_img_block_img_emb',
@@ -1562,9 +1564,9 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
     """Reconstruct image and text seperately using the same forward pass, with two optimizers, different methods and gradient indices per each modality."""
     
 
-    def __init__(self, model, mean_std=(0.0, 1.0), config=DEFAULT_CONFIG, num_images=1, G=None):
+    def __init__(self, model, device, mean_std=(0.0, 1.0), config=DEFAULT_CONFIG, num_images=1, G=None, bn_prior=((0.0, 1.0)) ):
         """Initialize with model, (mean, std) and config."""
-        super().__init__(model, mean_std, config, num_images, G=G)
+        super().__init__(model, device, mean_std, config, num_images, G=G, bn_prior=bn_prior)
 
         self.image_recon_done = False
         self.text_recon_done = False

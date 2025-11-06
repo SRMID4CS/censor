@@ -10,11 +10,12 @@ from inversefed import utils
 from .optimization_strategy import training_strategy
 
 
-from .reconstruction_algorithms import GradientReconstructor, FedAvgReconstructor, BNStatisticsHook
+from .reconstruction_algorithms import GradientReconstructor, FedAvgReconstructor, BNStatisticsHook, MultimodalJointGradientReconstructor
 
 from .options import options
 from inversefed import metrics
 
 __all__ = ['train', 'construct_dataloaders', 'construct_model', 'MetaMonkey',
            'training_strategy', 'nn', 'utils', 'options',
-           'metrics', 'GradientReconstructor', 'FedAvgReconstructor', 'BNStatisticsHook']
+           'metrics', 'GradientReconstructor', 'FedAvgReconstructor', 'BNStatisticsHook',
+           'MultimodalJointGradientReconstructor']
