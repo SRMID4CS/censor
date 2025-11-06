@@ -578,9 +578,9 @@ class GradientReconstructor():
             self.noises = deepcopy(self.initial_noises)
         elif self.generative_model_name in ['BigGAN']:
             if labels is None:
-                self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).float().to(self.device) for i in range(self.config['restarts'])]
+                self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
             else:
-                self.ys = [torch.nn.functional.one_hot(labels, num_classes=1000).float().to(self.device) for i in range(self.config['restarts'])]
+                self.ys = [torch.nn.functional.one_hot(labels, num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
 
         self.gen_outs = [[None] for i in range(self.config['restarts'])]
 
@@ -750,10 +750,6 @@ class GradientReconstructor():
                 optim_param.append(labels_opt)
             else:
                 labels_opt = labels
-
-            # make cond_vector trainable for BigGAN
-            self.ys[trial].requires_grad = True
-            optim_param.append(self.ys[trial])
 
             for param in optim_param:
                 param.requires_grad = True
@@ -969,10 +965,6 @@ class GradientReconstructor():
                         to_optimize = [dummy_z[trial], _labels[trial]]
                     else:
                         to_optimize = [dummy_z[trial]]
-
-                    if self.generative_model_name in ['BigGAN']:
-                        self.ys[trial].requires_grad = True
-                        to_optimize.append(self.ys[trial])
 
                     if self.config['optim'] == 'adam':
                         optimizer[trial] = torch.optim.Adam(to_optimize, lr=self.config['lr'])
