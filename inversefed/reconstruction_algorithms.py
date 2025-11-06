@@ -650,7 +650,7 @@ class GradientReconstructor():
                 losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                 optimizer.zero_grad()
 
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses)
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses, indices=self.config['indices'])
                 rec_loss = closure()
 
                 optimizer.step()
@@ -777,7 +777,7 @@ class GradientReconstructor():
                 self.dummy_z = dummy_z[trial]
                 
 
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses)
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses, indices=self.config['indices'])
                 rec_loss = closure()
 
                 optimizer.step()
@@ -1060,7 +1060,7 @@ class GradientReconstructor():
                         loss_detail = []
                         for i in range(self.num_samples):
                             self.dummy_z = torch.Tensor(ng_data[i].value).to(self.device)
-                            closure = self._gradient_closure(optimizer[trial], _x_gen[i], self.input_data, labels_opt, losses)
+                            closure = self._gradient_closure(optimizer[trial], _x_gen[i], self.input_data, labels_opt, losses, indices=self.config['indices'])
                             rec_loss = closure()
                             loss.append(rec_loss.item())
                             loss_detail.append(losses)   #record every ask's losses
@@ -1069,13 +1069,13 @@ class GradientReconstructor():
                         for z, l in zip(ng_data, loss):
                             optimizer[trial].tell(z, l)
                     elif self.G:
-                        closure = self._gradient_closure(optimizer[trial], _x[trial], self.input_data, labels_opt, losses)
+                        closure = self._gradient_closure(optimizer[trial], _x[trial], self.input_data, labels_opt, losses, indices=self.config['indices'])
                         rec_loss = optimizer[trial].step(closure)
                         rec_loss = rec_loss.item()
                     else:
                         imgs = _x[trial]
 
-                        closure = self._gradient_closure(optimizer[trial], imgs, self.input_data, labels_opt, losses)
+                        closure = self._gradient_closure(optimizer[trial], imgs, self.input_data, labels_opt, losses, indices=self.config['indices'])
                         rec_loss = optimizer[trial].step(closure)
                         rec_loss = rec_loss.item()
 
@@ -1266,7 +1266,7 @@ class GradientReconstructor():
 
                     _x_trial = [self.gen_dummy_data(self.G_list2d[trial][k], self.generative_model_name, self.dummy_zs[k], noise=self.noise_zs[k], ys=self.ys_zs[k]).to('cpu') for k in range(self.num_images)]
                     _x[trial] = torch.stack(_x_trial).squeeze(1).to(self.device)
-                    closure = self._gradient_closure(optimizer[trial], _x[trial], self.input_data, labels, losses)
+                    closure = self._gradient_closure(optimizer[trial], _x[trial], self.input_data, labels, losses, indices=self.config['indices'])
                     rec_loss = optimizer[trial].step(closure)
                     if self.config['lr_decay']:
                         scheduler[trial].step()
@@ -1365,7 +1365,7 @@ class GradientReconstructor():
         else:
             raise ValueError()
 
-    def _gradient_closure(self, optimizer, x_trial, input_gradient, label, losses, indices=self.config['indices']):
+    def _gradient_closure(self, optimizer, x_trial, input_gradient, label, losses, indices='def'):
 
         data_holder = DataHolder()
         def closure():
@@ -1789,7 +1789,7 @@ class FedAvgReconstructor(GradientReconstructor):
         self.use_updates = use_updates
         self.batch_size = batch_size
 
-    def _gradient_closure(self, optimizer, x_trial, input_gradient, label, losses):
+    def _gradient_closure(self, optimizer, x_trial, input_gradient, label, losses, indices='def'):
 
         data_holder = DataHolder()
         def closure():
@@ -1817,7 +1817,7 @@ class FedAvgReconstructor(GradientReconstructor):
                                         config=self.config)
 
                 rec_loss = reconstruction_costs([gradient], input_gradient[i],
-                                                cost_fn=self.config['cost_fn'], indices=self.config['indices'],
+                                                cost_fn=self.config['cost_fn'], indices=indices,
                                                 weights=self.config['weights'], model = self.model)
 
                 if self.config['total_variation'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
