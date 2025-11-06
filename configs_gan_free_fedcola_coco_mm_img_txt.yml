@@ -3,7 +3,7 @@
   optim : 'GAN_free'    #optim method, ['GAN_based', 'GAN_free']
   cost_fn : 'sim_cmpr0'   #the type of loss function 
   set_seed :       # random seed. Following geiping et. al., we do not give random seed for GAN-free methods.
-  indices : 'fedcola_img_emb' # 'fedcola_img_block_img_emb' # 'fedcola_img_block'      #decide which part of gradients to be involved in the final gradients match loss.
+  indices : 'fedcola_txt_emb' # 'fedcola_img_block_img_emb' # 'fedcola_img_block'      #decide which part of gradients to be involved in the final gradients match loss.
   weights : 'equal'    #weight of every graident scalar's matching loss
   init : 'randn'     #how we initial the original latent code.
   init_text : 'randn'    #how we initial the original latent code of text embedding.
@@ -11,7 +11,7 @@
   restarts : 4
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 1     # the number of experiments
+  num_exp : 10     # the number of experiments
   target_id : 10 # the target image id + iterative incrementation of id
   target_id_increment : 10 # the incrementation of target image id
   unrelated_target_offset : -1 # the offset for unrelated target
@@ -24,7 +24,7 @@
 
   bn_stat : 0       #choose if we use bn statistic to regularizer 
 
-  max_iterations : 10    #Maximum number of iterations for reconstruction.
+  max_iterations : 2000    #Maximum number of iterations for reconstruction.
 
   use_saved_models : False  # whether to use saved models or not
   model_load_dir : '/home/ubuntu/mnt-disk/repos/FedCola/results/FedCola/FedCola_250805_023340'  # the directory to load saved models from

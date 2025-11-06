@@ -12,7 +12,7 @@
 
   num_images : 1   # the number of images to reconstruct at a batch
   num_exp : 1     # the number of experiments / inverted images
-  target_id : 10
+  target_id : 100
   target_id_increment : 1 # the incrementation of target image id
   unrelated_target_offset : -1 # the offset for unrelated target
   lr : 0.03
@@ -23,7 +23,7 @@
   patch_prior : -1   #the coefficient of patch prior regularizer
   CLIP_loss : 0.01    #the coefficient of CLIP loss regularizer
 
-  max_iterations : 100   #Maximum number of iterations for latent reconstruction.
+  max_iterations : 2000   #Maximum number of iterations for latent reconstruction.
   
   use_saved_models : False  # whether to use saved models or not
   model_load_dir : '/home/ubuntu/mnt-disk/results/fedcola/exp_name'  # the directory to load saved models from
@@ -52,8 +52,9 @@
   ggl : false
 
   #For GIFD with biggan
-  #steps: [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]  #Total 13000
-  steps: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]  #Total 13000
+  #steps: [2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000]  #Total 26000
+  steps: [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]  #Total 13000
+  #steps: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]  #Total 13000
   lr_io: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 
   start_layer: 0
@@ -76,7 +77,7 @@
   lr_same_pace: false 
 
   # training epoch
-  train_epochs: 3
+  train_epochs: 1
   our_num_tries : 10
 
   #Defense parameter
