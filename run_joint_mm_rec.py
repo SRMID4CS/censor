@@ -346,6 +346,47 @@ if __name__ == "__main__":
                         save_intermediate_at_txt=config['save_intermediate_at_txt'],
                         stop_at_text_perf_match=config['stop_at_text_perf_match'],
                         )
+            elif config['optim'] == 'joint':
+                config_m = dict(cost_fn=config['cost_fn'],
+                        indices=config['indices'],
+                        weights=config['weights'],
+                        lr=config['lr'] if config['lr'] is not None else 0.1,
+                        optim='adam',
+                        restarts=config['restarts'],
+                        max_iterations=config['max_iterations'],
+                        total_variation=config['total_variation'],
+                        bn_stat=config['bn_stat'],
+                        patch_prior=config['patch_prior'],
+                        patch_size=args.patch_size,
+                        CLIP_loss=config['CLIP_loss'],
+                        image_norm=config['image_norm'],
+                        z_norm=args.z_norm,
+                        group_lazy=config['group_lazy'],
+                        init=config['init'],
+                        init_text=config['init_text'],
+                        lr_decay=True,
+                        dataset=config['dataset'],
+                        geiping=config['geiping'],
+                        yin=config['yin'],
+                        generative_model='',
+                        gen_dataset='',
+                        giml=False,
+                        gias=False,
+                        gias_lr=0.0,
+                        gias_iterations=0,
+                        model=config['model'],
+                        save_intermediate_at_img=config['save_intermediate_at_img'],
+                        save_intermediate_at_txt=config['save_intermediate_at_txt'],
+                        stop_at_text_perf_match=config['stop_at_text_perf_match'],
+                        img_lr=config['img_lr'],
+                        txt_lr=config['txt_lr'],
+                        img_max_iterations=config['img_max_iterations'],
+                        txt_max_iterations=config['txt_max_iterations'],
+                        img_indices=config['img_indices'],
+                        txt_indices=config['txt_indices'],
+                        img_convergence_threshold=config['img_convergence_threshold'],
+                        txt_convergence_threshold=config['txt_convergence_threshold'],
+                        )
 
         G = None
         if args.checkpoint_path:
@@ -512,19 +553,13 @@ if __name__ == "__main__":
                                     weight_decay=defs.weight_decay)
                         logger.info('Orthogonal applied in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], no defense applied later.')
 
-                rec_machine = inversefed.GradientReconstructor(model, setup['device'], (dm, ds), config_m, num_images=config['num_images'], bn_prior=bn_prior, G=G)
+                rec_machine = inversefed.MultimodalJointGradientReconstructor(model, setup['device'], (dm, ds), config_m, num_images=config['num_images'], bn_prior=bn_prior, G=G)
 
                 if G is None:
                     G = rec_machine.G
 
-                if config['model'] == 'FedCola_IMG_TXT':
-                    labels_to_support = None
-                    logger.info("Reconstructing FedCola_IMG_TXT : Labels set to None")
-                else:
-                    labels_to_support = labels
-                    logger.info("Real labels:{}".format(labels))
 
-                result = rec_machine.reconstruct(input_gradient, labels_to_support, img_shape=input_shape, dryrun=iter_dryrun)
+                result = rec_machine.reconstruct(input_gradient, None, img_shape=input_shape, dryrun=iter_dryrun)
                 if iter_dryrun:
                     continue
             else:

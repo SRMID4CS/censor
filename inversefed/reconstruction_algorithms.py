@@ -105,6 +105,14 @@ DEFAULT_CONFIG = dict(signed=False,
                       save_intermediate_at_img=1000,  # the interval at which to save intermediate results, -1 for no intermediate saving
                       save_intermediate_at_txt=100,  # the interval at which to save intermediate results, -1 for no intermediate saving
                       stop_at_text_perf_match=False,
+                      img_lr=0.1,
+                      txt_lr=0.1,
+                      img_max_iterations=10,
+                      txt_max_iterations=10,
+                      img_indices='fedcola_img_block_img_emb',
+                      txt_indices='fedcola_txt_block_txt_emb',
+                      img_convergence_threshold=0.5,
+                      txt_convergence_threshold=0.5,
                       )
 
 def _validate_config(config):
@@ -938,7 +946,7 @@ class GradientReconstructor():
             if self.config['model'] == 'FedCola_IMG_TXT':
                 _labels = [None for _ in range(self.config['restarts'])]
 
-            if self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_TXT' and init_txt != 'ground_truth':
+            if (self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_TXT') and init_txt != 'ground_truth':
                 # TODO : check of num images / batches later
                 label_convergence_metrics = [{
                     'length_infered': False,
@@ -1365,7 +1373,7 @@ class GradientReconstructor():
         else:
             raise ValueError()
 
-    def _gradient_closure(self, optimizer, x_trial, input_gradient, label, losses):
+    def _gradient_closure(self, optimizer, x_trial, input_gradient, label, losses, indices=self.config['indices']):
 
         data_holder = DataHolder()
         def closure():
@@ -1417,7 +1425,7 @@ class GradientReconstructor():
                         gradient[-2] = gradient[-2] * mask
                 torch.cuda.empty_cache()
                 rec_loss = reconstruction_costs([gradient], input_gradient[i],
-                                                cost_fn=self.config['cost_fn'], indices=self.config['indices'],
+                                                cost_fn=self.config['cost_fn'], indices=indices,
                                                 weights=self.config['weights'], model = self.model)
 
                 if self.config['total_variation'] > 0 and (self.config['model'] == 'FedCola_IMG' or self.config['model'] == 'FedCola_IMG_TXT'):
@@ -1562,6 +1570,219 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
     """Reconstruct image and text seperately using the same forward pass, with two optimizers, different methods and gradient indices per each modality."""
     
 
+    def __init__(self, model, mean_std=(0.0, 1.0), config=DEFAULT_CONFIG, num_images=1, G=None):
+        """Initialize with model, (mean, std) and config."""
+        super().__init__(model, mean_std, config, num_images, G=G)
+
+        self.image_recon_done = False
+        self.text_recon_done = False
+
+        self.img_max_iterations = self.config.get('img_max_iterations', self.max_iterations)
+        self.txt_max_iterations = self.config.get('txt_max_iterations', self.max_iterations)
+        self.max_iterations = max(self.img_max_iterations, self.txt_max_iterations)
+
+
+    def reconstruct(self, input_data, labels, img_shape=(3, 32, 32), txt_shape=(20,384), dryrun=False, tol=None):
+        """Reconstruct image from gradient."""
+        if torch.is_tensor(input_data[0]):  
+            self.input_data = [input_data]
+        else:   # mutiple gradients
+            self.input_data = input_data
+
+        self.image_size = img_shape[1]
+        start_time = time.time()
+        ans = []
+
+        self.img_shape = img_shape
+        self.txt_shape = txt_shape
+
+        self.images = self._init_images(img_shape)
+        self.text_embeds = self._init_text_embeds(txt_shape)
+
+        # Initialize dummy_z for GAN-based reconstruction
+        self.dummy_z_global = None
+        self.dummy_z_io = None
+
+        if self.config['img_recon_method'] == 'GAN_based':  # GAN applying
+            self.init_var(self.text_embeds)
+            self.dummy_z_global = [None for _ in range(self.config['restarts'])]
+            for trial in range(self.config['restarts']):
+                self.dummy_z_global[trial] = self.init_dummy_z(self.G, self.generative_model_name, self.num_images)
+
+            #GIFD
+            if self.config['gifd']:
+                self.config['cost_fn'] = self.gifd_loss 
+                self.config['optim'] = 'adam'
+                self.config['KLD'] = -1
+                self.dummy_z_io = [z.detach().clone().to(self.device).requires_grad_(True) for z in self.dummy_z_global]
+                # ans += self.inter_optimizer(self.dummy_z_io, infer_labels, -1)
+
+
+        if self.config['img_recon_method'] == 'GAN_free':  #GAN-free method
+
+            if self.config['geiping']:
+                self.config['cost_fn'] = 'sim_cmpr0'
+                self.config['image_norm'] = -1
+                self.config['group_lazy'] = -1
+
+        x_i_hat, x_t_hat = self.joint_reconstructor()
+        _, best_score, x_i_hat_best, _, x_t_hat_best = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun)
+        stats_gp = {}
+        stats_gp['opt'] = best_score
+        ans.append(['joint'] + [x_i_hat_best, stats_gp, x_t_hat_best])
+
+        logger.info(f'Total time: {time.time()-start_time}.')
+        return ans
+
+    def joint_reconstructor(self):
+
+        #initialize data holder
+        data_holder = DataHolder()
+        
+        self.max_iterations
+
+        x_i_hat = self.images
+        x_t_hat = self.text_embeds
+
+        try:
+
+            # TODO : add scheduler if needed
+            image_optimizer = [None for _ in range(self.config['restarts'])]
+            image_scheduler = [None for _ in range(self.config['restarts'])]
+
+            text_optimizer = [None for _ in range(self.config['restarts'])]
+            text_scheduler = [None for _ in range(self.config['restarts'])]
+
+            # initialize label convergence metrics for text
+            label_convergence_metrics = [{
+                'length_infered': False,
+                'perfect_match': False,
+                'length_iter': -1,
+                'perf_iter': -1,
+                'inferred_length': -1,
+                'true_length': get_true_length(data_holder.get('ground_truth_text')[nn].unsqueeze(0))
+            } for nn in range(self.num_images)]
+            
+            # send generator into GPU        
+            if self.G:
+                    self.G.to(self.device)
+
+            # initialize optimizers
+            image_optimizer = [torch.optim.Adam([x_i_hat[trial]], lr=self.config['img_lr']) for trial in range(self.config['restarts'])]
+            text_optimizer = [torch.optim.Adam([x_t_hat[trial]], lr=self.config['txt_lr']) for trial in range(self.config['restarts'])]
+
+            dm, ds = self.mean_std
+            early_stopping = False
+
+            for iteration in range(self.max_iterations):
+                for trial in range(self.config['restarts']):
+                    x_i_hat[trial].requires_grad_(True)
+                    x_t_hat[trial].requires_grad_(True)
+                    x_i_trial = x_i_hat[trial]
+                    x_t_trial = x_t_hat[trial]
+                    
+                    # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
+                    image_losses = [0, 0, 0, 0, 0, 0, 0]
+
+                    if self.G:
+                        dummy_z_trial = self.dummy_z_global[trial]
+
+                        if self.generative_model_name in ['stylegan2','stylegan2-ada','stylegan2-ada-untrained']:
+                            x_i_trial = self.gen_dummy_data(self.G_synthesis, self.generative_model_name, dummy_z_trial)
+
+                        elif self.generative_model_name in ['stylegan2_io']:
+                            x_i_trial = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial, noise=self.noises[trial])
+
+                        elif self.generative_model_name in ['BigGAN']:  #For gias over BigGAN
+                            x_i_trial = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial, ys=self.ys[trial])
+                        else:
+                            x_i_trial = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial)
+                        self.dummy_z = dummy_z_trial
+                        
+                    else:
+                        self.dummy_z = None
+    
+                    if self.config['img_recon_method'] == 'GAN_based' and iteration < self.img_max_iterations:
+                        image_closure = self._gradient_closure(image_optimizer[trial], x_i_trial, self.input_data, x_t_trial.detach().clone(), losses, indices=self.config.get('img_indices'))
+                        image_rec_loss = image_optimizer[trial].step(image_closure)
+                        image_rec_loss = image_rec_loss.item()
+
+                    if self.config['txt_recon_method'] == 'GAN_based' and iteration < self.txt_max_iterations:
+                        text_closure = self._gradient_closure(text_optimizer[trial], x_i_trial.detach().clone(), self.input_data, x_t_trial, losses, indices=self.config.get('txt_indices'))
+                        text_rec_loss = text_optimizer[trial].step(text_closure)
+                        text_rec_loss = text_rec_loss.item()
+
+                    with torch.no_grad():
+                        if self.config['save_intermediate_at_img'] > 0 and (iteration % self.config['save_intermediate_at_img'] == 0):
+                            logger.info(f'Saving intermediate IMG at iteration {iteration}...')
+                            for num_img in range(self.num_images):
+                                dir_path = os.path.join(data_holder.get('save_dir'), f'{num_img}/')
+                                os.makedirs(dir_path, exist_ok=True)
+                                torchvision.utils.save_image(torch.clamp(x_i_trial.detach().clone() * ds + dm, 0, 1)[num_img:num_img + 1, ...], os.path.join(dir_path, f'{num_img}_trial_{trial}_it_{iteration}.png'))
+                        if self.config['save_intermediate_at_txt'] > 0 and (iteration % self.config['save_intermediate_at_txt'] == 0):
+                            logger.info(f'Saving intermediate TXT at iteration {iteration}...')
+                            for num_txt in range(self.num_images):
+                                recon_sentence, tokens = de_embed_text(x_t_trial[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                                logger.info(f'Recon Sentence : {recon_sentence}')
+                                dir_path = os.path.join(data_holder.get('save_dir'), f'{num_txt}/')
+                                os.makedirs(dir_path, exist_ok=True)
+                                with open(os.path.join(dir_path, f'{num_txt}_trial_{trial}_it_{iteration}.txt'), 'w') as f:
+                                    f.write(recon_sentence)
+
+                        if (iteration + 1 == self.max_iterations) or iteration % save_interval == 0:
+                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss:2.4f} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | ImageNorm: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | kld: {losses[4]:7.4f} | patch: {losses[5]:7.4f} | CLIP: {losses[6]:7.4f} ')
+                            if self.config['z_norm'] > 0:
+                                logger.info(torch.norm(dummy_z[trial], 2).item())
+
+                        x_i_trial.data = torch.max(torch.min(x_i_trial, (1 - dm) / ds), -dm / ds)
+
+                        # check length convergence and perfect match convergence for text
+                        if (self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_TXT') and self.config['init_text'] != 'ground_truth' and iteration % 50 == 0:
+                            cap_opt = x_t_trial.detach().clone()
+                            for num_img in range(self.num_images):
+                                if not label_convergence_metrics[num_img]['length_infered']:
+                                    inferred_length, is_length_correct = infer_label_length_convergence(cap_opt[num_img], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'), true_length=label_convergence_metrics[num_img]['true_length'])
+                                    if inferred_length > 0:
+                                        label_convergence_metrics[num_img]['length_infered'] = is_length_correct
+                                        label_convergence_metrics[num_img]['length_iter'] = iteration
+                                        label_convergence_metrics[num_img]['inferred_length'] = inferred_length
+                                        logger.info(f"Trial {trial}: Length inferred at iteration {iteration}, correct: {is_length_correct}")
+                                if not label_convergence_metrics[num_img]['perfect_match']:
+                                    is_perfect = infer_label_perfect_match(cap_opt[num_img], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'), ground_truth_text_token_ids=data_holder.get('ground_truth_text')[num_img])
+                                    if is_perfect:
+                                        label_convergence_metrics[num_img]['perfect_match'] = True
+                                        label_convergence_metrics[num_img]['perf_iter'] = iteration
+                                        logger.info(f"Trial {trial}: Perfect match achieved at iteration {iteration}")
+                            data_holder.set('label_convergence_metrics', label_convergence_metrics)
+                            # stop condition if any perfect matched trial achieved for all num images
+                            if self.config['stop_at_text_perf_match']:
+                                all_perf_matched = all([label_convergence_metrics[num_img]['perfect_match'] for num_img in range(self.num_images)])
+                                if all_perf_matched:
+                                    logger.info("Perfect text match achieved, stopping optimization.")
+                                    early_stopping = True
+
+                    if early_stopping:
+                        break
+
+                if early_stopping:
+                    break
+
+                if iteration == self.img_max_iterations -1:
+                    self.image_recon_done = True
+                    logger.info("=== Image reconstruction iterations maxed out ===")
+                if iteration == self.txt_max_iterations -1:
+                    self.text_recon_done = True
+                    logger.info("=== Text reconstruction iterations maxed out ===")
+
+
+        except KeyboardInterrupt:
+            logger.info(f'Recovery interrupted manually in iteration {iteration}!')
+            pass
+
+        if self.G:
+            self.G.to("cpu")
+
+        return x_i_hat, x_t_hat
 
 class FedAvgReconstructor(GradientReconstructor):
     """Reconstruct an image from weights after n gradient descent steps."""

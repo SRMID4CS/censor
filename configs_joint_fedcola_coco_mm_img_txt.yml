@@ -1,6 +1,17 @@
   Introduction : 'GAN-free methods for gradient inversion attack.'
   
-  optim : 'GAN_free'    #optim method, ['GAN_based', 'GAN_free']
+  optim : 'joint'    #optim method, ['GAN_based', 'GAN_free']
+  img_lr : 0.1
+  txt_lr : 0.1
+  img_recon_method : 'GAN_free'   #['GAN_free', 'GAN_based']
+  txt_recon_method : 'GAN_free'   #['GAN_free', 'GAN_based']
+  img_indices : 'fedcola_img_block_img_emb'  # 'fedcola_img_block_img_emb', 'fedcola_img_block', 'def'
+  txt_indices : 'fedcola_txt_block_txt_emb'  # 'fedcola_txt_block_txt_emb', 'fedcola_txt_block', 'def'
+  img_max_iterations : 10
+  txt_max_iterations : 10
+  img_convergence_threshold : 0.5
+  txt_convergence_threshold : 0.5
+
   cost_fn : 'sim_cmpr0'   #the type of loss function 
   set_seed :       # random seed. Following geiping et. al., we do not give random seed for GAN-free methods.
   indices : 'fedcola_img_emb' # 'fedcola_img_block_img_emb' # 'fedcola_img_block'      #decide which part of gradients to be involved in the final gradients match loss.
@@ -44,7 +55,7 @@
   data_path : 'N/A'  # specify your dataset path
 
   #For output data
-  exp_name : 'ex1_FedCola_mm_img_txt'   #Same latent space search
+  exp_name : 'ex1_joint_FedCola_mm_img_txt'   #Same latent space search
   output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
 
   #Choice for GAN-free methods
