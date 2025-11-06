@@ -1558,6 +1558,11 @@ class GradientReconstructor():
         return cosine_similarity
 
 
+class MultimodalJointGradientReconstructor(GradientReconstructor):
+    """Reconstruct image and text seperately using the same forward pass, with two optimizers, different methods and gradient indices per each modality."""
+    
+
+
 class FedAvgReconstructor(GradientReconstructor):
     """Reconstruct an image from weights after n gradient descent steps."""
 
