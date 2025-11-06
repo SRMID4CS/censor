@@ -1677,6 +1677,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                     
                     # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                     image_losses = [0, 0, 0, 0, 0, 0, 0]
+                    text_losses = [0, 0, 0, 0, 0, 0, 0]
 
                     if self.G:
                         dummy_z_trial = self.dummy_z_global[trial]
@@ -1696,13 +1697,13 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                     else:
                         self.dummy_z = None
     
-                    if self.config['img_recon_method'] == 'GAN_based' and iteration < self.img_max_iterations:
-                        image_closure = self._gradient_closure(image_optimizer[trial], x_i_trial, self.input_data, x_t_trial.detach().clone(), losses, indices=self.config.get('img_indices'))
+                    if self.config['img_recon_method'] == 'GAN_free' and iteration < self.img_max_iterations:
+                        image_closure = self._gradient_closure(image_optimizer[trial], x_i_trial, self.input_data, x_t_trial.detach().clone(), image_losses, indices=self.config.get('img_indices'))
                         image_rec_loss = image_optimizer[trial].step(image_closure)
                         image_rec_loss = image_rec_loss.item()
 
-                    if self.config['txt_recon_method'] == 'GAN_based' and iteration < self.txt_max_iterations:
-                        text_closure = self._gradient_closure(text_optimizer[trial], x_i_trial.detach().clone(), self.input_data, x_t_trial, losses, indices=self.config.get('txt_indices'))
+                    if self.config['txt_recon_method'] == 'GAN_free' and iteration < self.txt_max_iterations:
+                        text_closure = self._gradient_closure(text_optimizer[trial], x_i_trial.detach().clone(), self.input_data, x_t_trial, text_losses, indices=self.config.get('txt_indices'))
                         text_rec_loss = text_optimizer[trial].step(text_closure)
                         text_rec_loss = text_rec_loss.item()
 
@@ -1724,7 +1725,8 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                                     f.write(recon_sentence)
 
                         if (iteration + 1 == self.max_iterations) or iteration % save_interval == 0:
-                            logger.info(f'It: {iteration}. Rec. loss: {rec_loss:2.4f} | tv: {losses[0]:7.4f} | bn: {losses[1]:7.4f} | ImageNorm: {losses[2]:7.4f} | gr: {losses[3]:7.4f} | kld: {losses[4]:7.4f} | patch: {losses[5]:7.4f} | CLIP: {losses[6]:7.4f} ')
+                            logger.info(f'It: {iteration}. Image Rec. loss: {image_rec_loss:2.4f} | tv: {image_losses[0]:7.4f} | bn: {image_losses[1]:7.4f} | ImageNorm: {image_losses[2]:7.4f} | gr: {image_losses[3]:7.4f} | kld: {image_losses[4]:7.4f} | patch: {image_losses[5]:7.4f} | CLIP: {image_losses[6]:7.4f} ')
+                            logger.info(f'It: {iteration}. Text Rec. loss: {text_rec_loss:2.4f} ')
                             if self.config['z_norm'] > 0:
                                 logger.info(torch.norm(dummy_z[trial], 2).item())
 
