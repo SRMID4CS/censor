@@ -17,7 +17,7 @@
   lr : 0.03
   total_variation : 0.0001     #the coefficient of total variation
   bn_stat : 0       #choose if we use bn statistic to regularizer
-  image_norm : 0.000001    #the coefficient of norm regularizer
+  image_norm : 0    #the coefficient of norm regularizer
   group_lazy : 0    #choose if we use group lazy regularization
   patch_prior : -1   #the coefficient of patch prior regularizer
 

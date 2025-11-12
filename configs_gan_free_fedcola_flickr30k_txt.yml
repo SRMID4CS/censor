@@ -17,8 +17,8 @@ target_id_increment : 5 # the incrementation of target image id
 unrelated_target_offset : -1 # the offset for unrelated target
 lr : 0.1            #learning rate for Yin et al.
 total_variation : 0.0001     #the coefficient of total variation 
-image_norm : 0.000001    #the coefficient of norm regularizer for Yin et al.
-group_lazy : 0.01    #choose if we use group lazy regularization for Yin et al.
+image_norm : 0    #the coefficient of norm regularizer for Yin et al.
+group_lazy : 0    #choose if we use group lazy regularization for Yin et al.
 patch_prior : 0   #the coefficient of patch prior regularizer
 CLIP_loss : 0.01    #the coefficient of CLIP loss regularizer
 
