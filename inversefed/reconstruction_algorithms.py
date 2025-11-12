@@ -1023,7 +1023,7 @@ class GradientReconstructor():
                     elif self.config['model'] == 'FedCola_IMG_TXT' and self.config['init_text'] == 'ground_truth':
                         labels_opt = _labels[trial]
                     else:
-                        labels_opt = _labels
+                        labels_opt = labels
                     losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                     #Group Regularizer
                     if trial == 0 and iteration + 1 == construct_group_mean_at and self.config['group_lazy'] > 0:
