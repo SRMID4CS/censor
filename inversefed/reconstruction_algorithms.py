@@ -1684,8 +1684,6 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
             for iteration in range(self.max_iterations):
                 for trial in range(self.config['restarts']):
-                    x_i_hat_to_opt[trial] = x_i_hat[trial]
-                    x_t_hat_to_opt[trial] = x_t_hat[trial]
 
                     # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                     image_losses = [0, 0, 0, 0, 0, 0, 0]
