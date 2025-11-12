@@ -43,9 +43,14 @@ def construct_dataloaders(dataset, defs, data_path='~/data', shuffle=True, norma
     elif dataset == 'CIFAR100':
         trainset, validset = _build_cifar100(path, defs.augmentations, normalize)
         loss_fn = Classification()
-    elif dataset == 'CIFAR100_MM':
+    elif 'CIFAR100_MM' in dataset:
+        if 'img' in dataset:
+            loss_fn = Classification()
+        elif 'txt' in dataset:
+            loss_fn = Classification()
+        else:
+            loss_fn = torch.nn.functional.cosine_embedding_loss
         trainset, validset = _build_cifar100_mm(path, defs.augmentations, normalize, args)
-        loss_fn = torch.nn.functional.cosine_embedding_loss
     elif dataset == 'MNIST':
         trainset, validset = _build_mnist(path, defs.augmentations, normalize)
         loss_fn = Classification()
