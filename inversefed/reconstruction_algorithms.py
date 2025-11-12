@@ -1629,6 +1629,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
         return ans
 
     def joint_reconstructor(self):
+        self.model.eval()
 
         #initialize data holder
         data_holder = DataHolder()
@@ -1668,19 +1669,22 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
             x_i_hat_to_opt = [None for _ in range(self.config['restarts'])]
             x_t_hat_to_opt = [None for _ in range(self.config['restarts'])]
 
-            image_optimizer = [None for _ in range(self.config['restarts'])]
-            text_optimizer = [None for _ in range(self.config['restarts'])]
 
             for trial in range(self.config['restarts']):
                 x_i_hat_to_opt[trial] = x_i_hat[trial]
                 x_t_hat_to_opt[trial] = x_t_hat[trial]
-                x_i_hat_to_opt[trial].requires_grad_(True)
-                x_t_hat_to_opt[trial].requires_grad_(True)
+                x_i_hat_to_opt[trial].requires_grad = True
+                x_t_hat_to_opt[trial].requires_grad = True
 
                 # initialize optimizers
                 image_optimizer[trial] = torch.optim.Adam([x_i_hat_to_opt[trial]], lr=self.config['img_lr'])
                 text_optimizer[trial] = torch.optim.Adam([x_t_hat_to_opt[trial]], lr=self.config['txt_lr'])
 
+                if self.config['lr_decay'] and not self.config['optim'] == 'CMA-ES':
+                    image_scheduler[trial] = torch.optim.lr_scheduler.MultiStepLR(image_optimizer[trial],
+                        milestones=[self.max_iterations // 2.667, self.max_iterations // 1.6, self.max_iterations // 1.142], gamma=0.1)   # 3/8 5/8 7/8
+                    text_scheduler[trial] = torch.optim.lr_scheduler.MultiStepLR(text_optimizer[trial],
+                        milestones=[self.max_iterations // 2.667, self.max_iterations // 1.6, self.max_iterations // 1.142], gamma=0.1)   # 3/8 5/8 7/8
 
             for iteration in range(self.max_iterations):
                 for trial in range(self.config['restarts']):
@@ -1717,6 +1721,10 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                         text_rec_loss = text_optimizer[trial].step(text_closure)
                         text_rec_loss = text_rec_loss.item()
 
+                    if self.config['lr_decay'] and not self.config['optim'] == 'CMA-ES':
+                        image_scheduler[trial].step()
+                        text_scheduler[trial].step()
+
                     with torch.no_grad():
                         if self.config['save_intermediate_at_img'] > 0 and (iteration % self.config['save_intermediate_at_img'] == 0):
                             logger.info(f'Saving intermediate IMG at iteration {iteration}...')
@@ -1741,6 +1749,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                                 logger.info(torch.norm(dummy_z[trial], 2).item())
 
                         x_i_hat_to_opt[trial].data = torch.max(torch.min(x_i_hat_to_opt[trial], (1 - dm) / ds), -dm / ds)
+                        x_t_hat_to_opt[trial].data = x_t_hat_to_opt[trial]
 
                         # check length convergence and perfect match convergence for text
                         if (self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_TXT') and self.config['init_text'] != 'ground_truth' and iteration % 50 == 0:
@@ -1780,6 +1789,10 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                     self.text_recon_done = True
                     logger.info("=== Text reconstruction iterations maxed out ===")
 
+            # Update the original variables with the optimized results
+            for trial in range(self.config['restarts']):
+                x_i_hat[trial] = x_i_hat_to_opt[trial].detach().clone()
+                x_t_hat[trial] = x_t_hat_to_opt[trial].detach().clone()
 
         except KeyboardInterrupt:
             logger.info(f'Recovery interrupted manually in iteration {iteration}!')
