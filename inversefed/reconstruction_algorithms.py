@@ -1461,9 +1461,9 @@ class GradientReconstructor():
                     dm, ds = self.mean_std
                     x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
                     if self.config['init_text'] != 'ground_truth':
-                        recon_sentence, tokens = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                        recon_sentence, tokens = de_embed_text(batch_label[i], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     else:
-                        recon_sentence = get_text_from_tokens(batch_label[0], tokenizer=data_holder.get('bert_tokenizer'))
+                        recon_sentence = get_text_from_tokens(batch_label[i], tokenizer=data_holder.get('bert_tokenizer'))
                     clip_loss = 1 - self.clip_similarity(x_trial_clamp.detach(), recon_sentence, device=self.device)
                     rec_loss += self.config['CLIP_loss'] * clip_loss
                     losses[6] = clip_loss.item()
@@ -1639,6 +1639,10 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
         x_i_hat = self.images
         x_t_hat = self.text_embeds
 
+        # log txt and img indices
+        logger.debug(f"Image indices used for reconstruction: {self.config.get('img_indices')}")
+        logger.debug(f"Text indices used for reconstruction: {self.config.get('txt_indices')}")
+
         try:
 
             # TODO : add scheduler if needed
@@ -1697,7 +1701,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                         dummy_z_trial = self.dummy_z_global[trial]
 
                         if self.generative_model_name in ['stylegan2','stylegan2-ada','stylegan2-ada-untrained']:
-                            x_t_hat_to_opt[trial] = self.gen_dummy_data(self.G_synthesis, self.generative_model_name, dummy_z_trial)
+                            x_i_hat_to_opt[trial] = self.gen_dummy_data(self.G_synthesis, self.generative_model_name, dummy_z_trial)
 
                         elif self.generative_model_name in ['stylegan2_io']:
                             x_i_hat_to_opt[trial] = self.gen_dummy_data(self.G, self.generative_model_name, dummy_z_trial, noise=self.noises[trial])
@@ -1750,7 +1754,9 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
                         x_i_hat_to_opt[trial].data = torch.max(torch.min(x_i_hat_to_opt[trial], (1 - dm) / ds), -dm / ds)
                         x_t_hat_to_opt[trial].data = x_t_hat_to_opt[trial]
-
+                        x_i_hat[trial] = x_i_hat_to_opt[trial]
+                        x_t_hat[trial] = x_t_hat_to_opt[trial]
+                        
                         # check length convergence and perfect match convergence for text
                         if (self.config['model'] == 'FedCola_IMG_TXT' or self.config['model'] == 'FedCola_TXT') and self.config['init_text'] != 'ground_truth' and iteration % 50 == 0:
                             cap_opt = x_t_hat_to_opt[trial].detach().clone()
@@ -1788,11 +1794,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 if iteration == self.txt_max_iterations -1:
                     self.text_recon_done = True
                     logger.info("=== Text reconstruction iterations maxed out ===")
-
-            # Update the original variables with the optimized results
-            for trial in range(self.config['restarts']):
-                x_i_hat[trial] = x_i_hat_to_opt[trial].detach().clone()
-                x_t_hat[trial] = x_t_hat_to_opt[trial].detach().clone()
+                
 
         except KeyboardInterrupt:
             logger.info(f'Recovery interrupted manually in iteration {iteration}!')
@@ -1882,7 +1884,7 @@ class FedAvgReconstructor(GradientReconstructor):
                 if self.config['CLIP_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
                     dm, ds = self.mean_std
                     x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
-                    recon_sentence, tokens = de_embed_text(batch_label[0], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                    recon_sentence, tokens = de_embed_text(batch_label[i], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                     clip_loss = 1 - self.clip_similarity(x_trial_clamp.detach(), recon_sentence, device=self.device)
                     rec_loss += self.config['CLIP_loss'] * clip_loss
                     losses[6] = clip_loss.item()
