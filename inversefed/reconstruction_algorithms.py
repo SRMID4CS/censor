@@ -1719,12 +1719,12 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                         self.dummy_z = None
     
                     if self.config['img_recon_method'] == 'GAN_free' and iteration < self.img_max_iterations:
-                        image_closure = self._gradient_closure(image_optimizer[trial], x_i_hat_to_opt[trial], self.input_data, x_t_hat_to_opt[trial].detach().clone(), image_losses, indices=self.config.get('img_indices'))
+                        image_closure = self._gradient_closure(image_optimizer[trial], x_i_hat_to_opt[trial], self.input_data, x_t_hat_to_opt[trial], image_losses, indices=self.config.get('img_indices'))
                         image_rec_loss = image_optimizer[trial].step(image_closure)
                         image_rec_loss = image_rec_loss.item()
 
                     if self.config['txt_recon_method'] == 'GAN_free' and iteration < self.txt_max_iterations:
-                        text_closure = self._gradient_closure(text_optimizer[trial], x_i_hat_to_opt[trial].detach().clone(), self.input_data, x_t_hat_to_opt[trial], text_losses, indices=self.config.get('txt_indices'))
+                        text_closure = self._gradient_closure(text_optimizer[trial], x_i_hat_to_opt[trial], self.input_data, x_t_hat_to_opt[trial], text_losses, indices=self.config.get('txt_indices'))
                         text_rec_loss = text_optimizer[trial].step(text_closure)
                         text_rec_loss = text_rec_loss.item()
 
