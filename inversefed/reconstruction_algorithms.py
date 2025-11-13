@@ -1643,8 +1643,8 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
         x_t_hat = self.text_embeds
 
         # log txt and img indices
-        logger.debug(f"Image indices used for reconstruction: {self.config.get('img_indices')}")
-        logger.debug(f"Text indices used for reconstruction: {self.config.get('txt_indices')}")
+        logger.info(f"Image indices used for reconstruction: {self.config.get('img_indices')}")
+        logger.info(f"Text indices used for reconstruction: {self.config.get('txt_indices')}")
 
         try:
 
