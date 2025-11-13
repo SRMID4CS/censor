@@ -497,7 +497,7 @@ class GradientReconstructor():
                 # self.image_project = False
                 dummy_z_ggl = [z.detach().clone().to(self.device).requires_grad_(True) for z in dummy_z]
                 _x = self.reconstruct_by_latentCode(dummy_z_ggl, infer_labels, img_shape, dryrun, self.cma_iterations)
-                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dummy_z=dummy_z_ggl, dryrun=dryrun)
+                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dummy_z=dummy_z_ggl, dryrun=dryrun, indices=self.config['indices'])
                 stats_ggl = {}
                 stats_ggl['opt'] = best_score
                 ans.append(['ggl'] + [x_best, stats_ggl, label_best])
@@ -514,7 +514,7 @@ class GradientReconstructor():
                 #latent space search
                 dummy_z_gias = [z.detach().clone().to(self.device).requires_grad_(True) for z in dummy_z]
                 _x = self.reconstruct_by_latentCode(dummy_z_gias, infer_labels, img_shape, dryrun, self.max_iterations)
-                optimal_z, _, _, optimal_val, label_best = self.choose_optimal(_x, infer_labels, dummy_z=dummy_z_gias, dryrun=dryrun)
+                optimal_z, _, _, optimal_val, label_best = self.choose_optimal(_x, infer_labels, dummy_z=dummy_z_gias, dryrun=dryrun, indices=self.config['indices'])
                 # logger.info("optimal z's shape:{} _x shape:{}".format(optimal_z.shape, _x[0].shape))
                 #parameter space search
                 if self.generative_model_name in ['stylegan2_io']:
@@ -547,7 +547,7 @@ class GradientReconstructor():
                 self.config['optim'] = 'adam'
                 # self.max_iterations = 1
                 _x = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations, txt_shape=txt_shape)
-                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
+                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun, indices=self.config['indices'])
                 stats_yin = {}
                 stats_yin['opt'] = best_score
                 ans.append(['Yin'] + [x_best, stats_yin, label_best])
@@ -559,7 +559,7 @@ class GradientReconstructor():
                 _x, optimized_labels = self.reconstruct_by_latentCode(None, infer_labels, img_shape, dryrun, self.max_iterations, txt_shape=txt_shape)
                 if self.config['model'] == 'FedCola_IMG_TXT':
                     infer_labels = optimized_labels
-                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun)
+                _, best_score, x_best, _, label_best = self.choose_optimal(_x, infer_labels, dryrun=dryrun, indices=self.config['indices'])
                 stats_gp = {}
                 stats_gp['opt'] = best_score
                 ans.append(['geiping'] + [x_best, stats_gp, label_best])
@@ -850,7 +850,7 @@ class GradientReconstructor():
             #_x is not in the real image space.
             #TO DO: compute score
             stats = {}
-            optimal_z, stats['opt'], opt_img, _, opt_label = self.choose_optimal(_x, labels, dummy_z, dryrun=dryrun)
+            optimal_z, stats['opt'], opt_img, _, opt_label = self.choose_optimal(_x, labels, dummy_z, dryrun=dryrun, indices=self.config['indices'])
             if stats['opt'] < best_layer_score['opt']:  #save the best layer output
                 # best_layer_name = 'Best_' + prefix + 'output' 
                 # best_layer_num = i
@@ -866,7 +866,7 @@ class GradientReconstructor():
     """
     @brief Return optimal latent code and image according to the gradient match loss
     """
-    def choose_optimal(self, _x, labels, dummy_z=None, tol=None, dryrun=False, G=None):
+    def choose_optimal(self, _x, labels, dummy_z=None, tol=None, dryrun=False, G=None, indices='def'):
 
         restarts = self.config['restarts']
         scores = torch.zeros(restarts)
@@ -879,9 +879,9 @@ class GradientReconstructor():
             x[trial] = _x[trial].detach()
             if self.config['model'] == 'FedCola_IMG_TXT':
                 _labels[trial] = labels[trial].detach()
-                scores[trial] = self._score_trial(x[trial], self.input_data, _labels[trial])
+                scores[trial] = self._score_trial(x[trial], self.input_data, _labels[trial], indices=indices)
             else:
-                scores[trial] = self._score_trial(x[trial], self.input_data, labels)
+                scores[trial] = self._score_trial(x[trial], self.input_data, labels, indices=indices)
             if tol is not None and scores[trial] <= tol:
                 break
             if dryrun:
@@ -896,7 +896,7 @@ class GradientReconstructor():
         best_index_in_valid = torch.argmin(valid_scores)
         optimal_index = valid_indices[best_index_in_valid]
 
-        logger.info(f'Score: {scores}')
+        logger.info(f'Score: {scores}, Grad indices: {indices}')
         logger.info(f'Optimal result score: {scores[optimal_index]:2.4f}')
 
 
@@ -1302,7 +1302,7 @@ class GradientReconstructor():
             for k in range(self.num_images):
                 self.G_list2d[trial][k].cpu()
 
-        self.G, stats['opt'], x_optimal, _, label_optimal = self.choose_optimal(_x, labels, G=self.G_list2d)
+        self.G, stats['opt'], x_optimal, _, label_optimal = self.choose_optimal(_x, labels, G=self.G_list2d, indices=self.config['indices'])
         #the returned self.G is a list for a batch of imgs
 
 
@@ -1475,7 +1475,7 @@ class GradientReconstructor():
             return total_loss
         return closure
 
-    def _score_trial(self, x_trial, input_gradient, label):
+    def _score_trial(self, x_trial, input_gradient, label, indices='def'):
         # logger.info(f"score_trial label type:{type(label)}")
         num_images = label.shape[0]
 
@@ -1519,7 +1519,7 @@ class GradientReconstructor():
                     gradient[-2] = gradient[-2] * mask
 
             rec_loss = reconstruction_costs([gradient], input_gradient[i],
-                                    cost_fn=self.config['cost_fn'], indices=self.config['indices'],
+                                    cost_fn=self.config['cost_fn'], indices=indices,
                                     weights=self.config['weights'], model = self.model)
             total_loss += rec_loss
         return total_loss
@@ -1620,9 +1620,12 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 self.config['group_lazy'] = -1
 
         x_i_hat, x_t_hat = self.joint_reconstructor()
-        _, best_score, x_i_hat_best, _, x_t_hat_best = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun)
+
+        _, best_score_i, x_i_hat_best, _, _ = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun, indices=self.config.get('img_indices'))
+        _, best_score_t, _, _, x_t_hat_best = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun, indices=self.config.get('txt_indices'))
+
         stats_gp = {}
-        stats_gp['opt'] = best_score
+        stats_gp['opt'] = best_score_i + best_score_t
         ans.append(['joint'] + [x_i_hat_best, stats_gp, x_t_hat_best])
 
         logger.info(f'Total time: {time.time()-start_time}.')
