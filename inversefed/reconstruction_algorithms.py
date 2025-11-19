@@ -1990,8 +1990,8 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 x_t_hat_to_opt[trial].requires_grad = True
 
                 # initialize optimizers
-                image_optimizer[trial] = torch.optim.Adam([x_i_hat_to_opt[trial]], lr=self.config['img_lr'])
-                text_optimizer[trial] = torch.optim.Adam([x_t_hat_to_opt[trial]], lr=self.config['txt_lr'])
+                image_optimizer[trial] = torch.optim.Adam([x_i_hat_to_opt[trial], x_t_hat_to_opt[trial]], lr=self.config['img_lr'])
+                text_optimizer[trial] = torch.optim.Adam([x_i_hat_to_opt[trial], x_t_hat_to_opt[trial]], lr=self.config['txt_lr'])
 
                 if self.config['lr_decay'] and not self.config['optim'] == 'CMA-ES':
                     image_scheduler[trial] = torch.optim.lr_scheduler.MultiStepLR(image_optimizer[trial],
