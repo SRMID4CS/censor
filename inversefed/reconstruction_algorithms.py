@@ -1632,8 +1632,11 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 self.config['cost_fn'] = 'sim_cmpr0'
                 self.config['image_norm'] = -1
                 self.config['group_lazy'] = -1
-
-        x_i_hat, x_t_hat = self.joint_reconstructor()
+        
+        if self.config['img_recon_method'] == 'GAN_free' and self.config['txt_recon_method'] == 'GAN_free':
+            x_i_hat, x_t_hat = self.joint_reconstructor()
+        elif self.config['img_recon_method'] == 'GAN_based' and self.config['txt_recon_method'] == 'GAN_free':
+            x_i_hat, x_t_hat = self.joint_inter_optimizer()
 
         _, best_score_i, x_i_hat_best, _, _ = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun, indices=self.config.get('img_indices'))
         _, best_score_t, _, _, x_t_hat_best = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun, indices=self.config.get('txt_indices'))
@@ -1644,6 +1647,295 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
         logger.info(f'Total time: {time.time()-start_time}.')
         return ans
+
+    def joint_inter_optimizer(self, prefix=''):
+        self.model.eval()
+        self.G_io.to(self.device)
+        # if torch.is_tensor(input_data[0]):
+        #     input_data = [input_data]
+
+        x_i_hat = self.images
+        x_t_hat = self.text_embeds
+
+        res = []
+
+        if self.generative_model_name == 'stylegan2_io' or self.config['start_layer'] > 0:
+            self.config['KLD'] = 0
+
+        logger.info("-------------Start intermidiate space search---------------")
+        best_layer_img = None
+        best_layer_label = None
+        best_layer_score = {'opt':np.inf}
+        res = [[prefix + f'layer{i}', None, {'opt':-1}, None] for i in range(len(self.config["steps"]))]
+
+        for i, steps in enumerate(self.config["steps"]):
+            begin_layer = i + self.config['start_layer']
+
+            if begin_layer > self.config['end_layer']:
+                raise Exception('Attemping to go after end layer')
+            if self.generative_model_name == 'stylegan2_io':
+                x_i_hat, x_t_hat = self.invert_stylegan2(self.dummy_z_io, x_t_hat, begin_layer, range(5 + 2 *begin_layer), int(steps), i)
+            elif self.generative_model_name == 'BigGAN':
+                x_i_hat, x_t_hat = self.invert_biggan(self.dummy_z_io, x_t_hat, begin_layer, int(steps), i)
+                self.config['KLD'] = 0
+
+            stats = {}
+            optimal_z, stats['opt'], opt_img, _, _ = self.choose_optimal(x_i_hat, x_t_hat, self.dummy_z_io, indices=self.config['img_indices'])
+            optimal_z, _, _, _, opt_label = self.choose_optimal(x_i_hat, x_t_hat, self.dummy_z_io, indices=self.config['txt_indices'])
+
+            if stats['opt'] < best_layer_score['opt']:  #save the best layer output
+                # best_layer_name = 'Best_' + prefix + 'output' 
+                # best_layer_num = i
+                best_layer_img = opt_img.detach().clone()
+                best_layer_score = dict(stats)
+                best_layer_label = opt_label.detach().clone() if opt_label is not None else None
+
+            res[i] = [prefix + f'layer{i}', opt_img.detach().clone(), stats, opt_label.detach().clone() if opt_label is not None else None]
+            res.append(['Best_' + prefix + 'first_' + str(i) + '_layer' , best_layer_img, best_layer_score, best_layer_label])
+
+        return res
+
+    def invert_biggan(self, dummy_z, labels, start_layer, steps, index):
+        
+        logger.info("The start_layer:{}".format(start_layer))
+        logger.info(f"Running round {index + 1} / {len(self.config['steps'])} of GIFD.")
+
+        text_recon_completed = index * steps >= self.txt_max_iterations
+
+        learning_rate = self.config['lr_io'][index]
+
+        _x = [None for _ in range(self.config['restarts'])] 
+
+        self.G_io.start_layer = start_layer
+
+        for trial in range(self.config['restarts']):
+
+            self.G_io.start_layer = start_layer
+
+            if start_layer == 0:
+                optim_param = [dummy_z[trial]]
+                ps = SphericalOptimizer([dummy_z[trial]])  #pgd
+                self.count_trainable_params(G=self.G_io, z=dummy_z[0])
+            else:
+                self.gen_outs[trial][-1].requires_grad = True     
+                self.count_trainable_params(G=self.G_io, z=self.gen_outs[trial][-1])
+                optim_param =  [self.gen_outs[trial][-1]]
+                prev_gen_out = torch.ones(self.gen_outs[trial][-1].shape, device=self.gen_outs[trial][-1].device) * self.gen_outs[trial][-1]
+            
+            labels[trial].requires_grad = True
+            labels_opt = labels[trial]
+            labels_opt.requires_grad = True
+            optim_param.append(labels_opt)
+
+
+            for param in optim_param:
+                param.requires_grad = True
+
+            logger.info(f"Total number of trainable parameters: {self.n_trainable}")
+
+            optimizer = torch.optim.Adam(optim_param, lr=self.config['img_lr'])
+            text_optimizer = torch.optim.Adam(optim_param, lr=self.config['txt_lr'])
+
+            # logger.info("_invert z:{}".format(z.shape))
+            pbar = tqdm(range(steps))
+            # self.match_min = np.inf
+            
+            # c = torch.nn.functional.one_hot(self.labels, num_classes = self.fl_setting['num_classes']).to(self.input_gradient[0].device)
+
+
+            for current_step in pbar:
+                # img_gen = self.generator(z, c.float(), 1)
+                lr = self.get_lr(current_step / steps, learning_rate)
+                # optimizer = torch.optim.Adam([optim_param[0][select_idx]], lr=learning_rate)
+                optimizer.param_groups[0]['lr'] = lr
+
+                _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], ys=self.ys[trial], img_size=img_size, start_layer=start_layer) 
+                losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
+                text_losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
+                optimizer.zero_grad()
+                self.dummy_z = dummy_z[trial]
+
+
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses, indices=self.config['img_indices'], modality=self.modality)
+                rec_loss = closure()
+
+                optimizer.step()
+
+                if self.txt_max_iterations >= index*steps + current_step and self.config['txt_recon_method'] == 'GAN_free':
+                    text_closure = self._gradient_closure(text_optimizer, _x[trial], self.input_data, labels_opt, text_losses, indices=self.config['txt_indices'], modality=self.modality)
+                    text_rec_loss = text_closure()
+
+                    text_optimizer.step()
+                else:
+                    text_recon_completed = True
+                    logger.info("Text reconstruction for this step is skipped.")
+
+                if self.project and start_layer == 0:
+                    ps.step()   
+
+                if start_layer != 0 and self.config['do_project_gen_out']:
+                    if self.config['max_radius_gen_out'][index] > 0:
+                        deviation = project_onto_l1_ball(self.gen_outs[trial][-1] - prev_gen_out,
+                                                        self.config['max_radius_gen_out'][index])
+                        self.gen_outs[trial][-1].data = (prev_gen_out + deviation).data
+
+                pbar.set_description(
+                    (
+                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f} | CLIP: {losses[6]:7.4f} \n Text. loss: {text_rec_loss.item():7.4f} | CLIP: {text_losses[6]:7.4f} "
+                    )
+                )
+
+            with torch.no_grad():
+                # if torch.cuda.device_count() > 1:
+                #     self.G_io = deepcopy(self.G)
+                    # self.G_io.start_layer = start_layer
+                self.G_io.end_layer = start_layer + 1
+                    # self.G_io = nn.DataParallel(self.G_io)
+                    # self.G_io.to(self.device)
+                intermediate_out, new_ys = self.G_io(self.gen_outs[trial][-1], self.ys[trial].float(), 1)   if start_layer > 0 else self.G_io(dummy_z[trial], self.ys[trial].float(), 1)
+                self.gen_outs[trial].append(intermediate_out)   
+                self.ys[trial] = new_ys
+                self.G_io.end_layer = self.config['end_layer']
+                # self.G_io = nn.DataParallel(self.G_io)
+            # if self.image_project:
+            dm, ds = self.mean_std  
+            with torch.no_grad():
+                # Project into image space
+                _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
+                _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
+
+        return _x, labels
+
+
+    def invert_stylegan2(self, dummy_z, labels, start_layer, noise_list, steps, index):
+        learning_rate = self.config['lr_io'][index]
+        logger.info(f"Running round {index + 1} / {len(self.config['steps'])} of GIFD.")
+
+        text_recon_completed = index * steps >= self.txt_max_iterations
+
+        _x = [None for _ in range(self.config['restarts'])]        
+        for trial in range(self.config['restarts']):
+        # noise_list contains the indices of nodes that we will be optimizing over
+            for i in range(len(self.noises[trial])):   
+                if i in noise_list:
+                    self.noises[trial][i].requires_grad = True
+                else:
+                    self.noises[trial][i].requires_grad = False
+
+            with torch.no_grad():
+                if start_layer == 0:
+                    var_list = [dummy_z[trial]] + self.noises[trial]
+                    self.count_trainable_params(G=self.G_io, z=dummy_z[0])
+                else:
+                    self.gen_outs[trial][-1].requires_grad = True     
+                    self.count_trainable_params(G=self.G_io, z=self.gen_outs[trial][-1], noise=self.noises[trial])
+
+                    var_list = [dummy_z[trial]] + self.noises[trial] + [self.gen_outs[trial][-1]]
+                    prev_gen_out = torch.ones(self.gen_outs[trial][-1].shape, device=self.gen_outs[trial][-1].device) * self.gen_outs[trial][-1]
+                prev_latent = torch.ones(dummy_z[trial].shape, device=dummy_z[trial].device) * dummy_z[trial]
+                prev_noises = [torch.ones(noise.shape, device=noise.device) * noise for noise in
+                                self.noises[trial]]
+
+                # set network that we will be optimizing over
+                self.G_io.start_layer = start_layer          #start_layer is: 0 1 2 3...
+                self.G_io.end_layer = self.config['end_layer']
+            
+            logger.info(f"Total number of trainable parameters: {self.n_trainable}")
+
+            labels[trial].requires_grad = True
+            labels_opt = labels[trial]
+            labels_opt.requires_grad = True
+            to_optimize = var_list.copy().append(labels_opt)
+
+            for param in to_optimize:
+                param.requires_grad = True
+
+            optimizer = torch.optim.Adam(to_optimize, lr=self.config['img_lr'])
+            text_optimizer = torch.optim.Adam(to_optimize, lr=self.config['txt_lr'])
+
+            ps = SphericalOptimizer([dummy_z[trial]] + self.noises[trial])  #pgd
+            pbar = tqdm(range(steps))
+
+            for i in pbar:
+                if self.config['lr_same_pace']:
+                    total_steps = sum(self.steps)
+                    t = i / total_steps
+                else:
+                    t = i / steps
+                lr = self.get_lr(t, learning_rate)
+                optimizer.param_groups[0]["lr"] = lr
+                _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], noise=self.noises[trial]) 
+
+
+                #-                      Calculate loss                           -#
+                losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
+                text_losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
+
+                optimizer.zero_grad()
+                text_optimizer.zero_grad()
+
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses, indices=self.config['img_indices'], modality=self.modality)
+                rec_loss = closure()
+                optimizer.step()
+
+                if self.txt_max_iterations >= index*steps + i and self.config['txt_recon_method'] == 'GAN_free':
+                    text_closure = self._gradient_closure(text_optimizer, _x[trial], self.input_data, labels_opt, text_losses, indices=self.config['txt_indices'], modality=self.modality)
+                    text_rec_loss = text_closure()
+                    text_optimizer.step()
+                else:
+                    text_recon_completed = True
+                    logger.info("Text reconstruction for this step is skipped.")
+
+                if self.project:
+                    ps.step()      
+
+                #project back
+                if start_layer != 0 and self.config['do_project_gen_out']:
+                    if self.config['max_radius_gen_out'][index] > 0:
+                        deviation = project_onto_l1_ball(self.gen_outs[trial][-1] - prev_gen_out,
+                                                            self.config['max_radius_gen_out'][index])
+                        var_list[-1].data = (prev_gen_out + deviation).data
+                if self.config['do_project_latent']:
+                    if self.config['max_radius_latent'][index] > 0:
+                        deviation = project_onto_l1_ball(dummy_z[trial] - prev_latent,
+                                                            self.config['max_radius_latent'][index])
+                        var_list[0].data = (prev_latent + deviation).data
+                if self.config['do_project_noises']:
+                    if self.config['max_radius_noises'][index] > 0:
+                        deviations = [project_onto_l1_ball(noise - prev_noise,
+                                                            self.config['max_radius_noises'][index]) for noise,
+                                        prev_noise in zip(self.noises[trial], prev_noises)]
+                        for i, deviation in enumerate(deviations):
+                            var_list[i+1].data = (prev_noises[i] + deviation).data
+
+                pbar.set_description(
+                    (
+                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f} | CLIP: {losses[6]:7.4f} \n Text. loss: {text_rec_loss.item():7.4f} | CLIP: {text_losses[6]:7.4f} "
+                    )
+                )
+
+            # TODO: check what happens when we are in the last layer
+            with torch.no_grad():
+                # latent_w = self.mpl(dummy_z[trial])
+                self.G_io.end_layer = self.G_io.start_layer
+                intermediate_out, _  = self.G_io([dummy_z[trial]],
+                                                    input_is_latent=True,
+                                                    noise=self.noises[trial],
+                                                    layer_in=self.gen_outs[trial][-1],
+                                                    skip=None)
+                self.gen_outs[trial].append(intermediate_out)   
+
+                self.G_io.end_layer = self.config['end_layer']
+            
+            #project back to image
+            # if self.image_project:
+            dm, ds = self.mean_std  
+            with torch.no_grad():
+                # Project into image space
+                _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
+
+        return _x, labels
+
 
     def joint_reconstructor(self):
         self.model.eval()
