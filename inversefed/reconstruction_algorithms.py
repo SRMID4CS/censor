@@ -1612,7 +1612,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
         self.dummy_z_io = None
 
         if self.config['img_recon_method'] == 'GAN_based':  # GAN applying
-            self.init_var(self.text_embeds)
+            self.init_var(None)
             self.dummy_z_global = [None for _ in range(self.config['restarts'])]
             for trial in range(self.config['restarts']):
                 self.dummy_z_global[trial] = self.init_dummy_z(self.G, self.generative_model_name, self.num_images)
@@ -1749,10 +1749,11 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 # optimizer = torch.optim.Adam([optim_param[0][select_idx]], lr=learning_rate)
                 optimizer.param_groups[0]['lr'] = lr
 
-                _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], ys=self.ys[trial], img_size=img_size, start_layer=start_layer) 
+                _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], ys=self.ys[trial], start_layer=start_layer) 
                 losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                 text_losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                 optimizer.zero_grad()
+                text_optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
 
 
