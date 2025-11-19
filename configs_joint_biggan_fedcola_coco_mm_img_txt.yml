@@ -23,8 +23,8 @@
 
   num_images : 1   # the number of images to reconstruct at a batch
   num_exp : 1     # the number of experiments / inverted images
-  target_id : 100
-  target_id_increment : 1 # the incrementation of target image id
+  target_id : 10
+  target_id_increment : 10 # the incrementation of target image id
   unrelated_target_offset : -1 # the offset for unrelated target
   lr : 0.03
   total_variation : 0.0001     #the coefficient of total variation
