@@ -1757,19 +1757,10 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 self.dummy_z = dummy_z[trial]
 
 
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt, losses, indices=self.config['img_indices'], modality=self.modality)
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt.detach().clone(), losses, indices=self.config['img_indices'], modality=self.modality)
                 rec_loss = closure()
 
                 optimizer.step()
-
-                if self.txt_max_iterations >= index*steps + current_step and self.config['txt_recon_method'] == 'GAN_free':
-                    text_closure = self._gradient_closure(text_optimizer, _x[trial], self.input_data, labels_opt, text_losses, indices=self.config['txt_indices'], modality=self.modality)
-                    text_rec_loss = text_closure()
-
-                    text_optimizer.step()
-                else:
-                    text_recon_completed = True
-                    logger.info("Text reconstruction for this step is skipped.")
 
                 if self.project and start_layer == 0:
                     ps.step()   
@@ -1779,6 +1770,17 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                         deviation = project_onto_l1_ball(self.gen_outs[trial][-1] - prev_gen_out,
                                                         self.config['max_radius_gen_out'][index])
                         self.gen_outs[trial][-1].data = (prev_gen_out + deviation).data
+
+                if self.txt_max_iterations >= index*steps + current_step and self.config['txt_recon_method'] == 'GAN_free':
+                    text_closure = self._gradient_closure(text_optimizer, _x[trial].detach().clone(), self.input_data, labels_opt, text_losses, indices=self.config['txt_indices'], modality=self.modality)
+                    text_rec_loss = text_closure()
+
+                    text_optimizer.step()
+                else:
+                    text_rec_loss = torch.tensor(0.0)
+                    text_recon_completed = True
+                    logger.info("Text reconstruction for this step is skipped.")
+
 
                 pbar.set_description(
                     (
