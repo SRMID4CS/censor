@@ -1635,15 +1635,14 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
         
         if self.config['img_recon_method'] == 'GAN_free' and self.config['txt_recon_method'] == 'GAN_free':
             x_i_hat, x_t_hat = self.joint_reconstructor()
+            _, best_score_i, x_i_hat_best, _, _ = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun, indices=self.config.get('img_indices'))
+            _, best_score_t, _, _, x_t_hat_best = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun, indices=self.config.get('txt_indices'))
+            stats_gp = {}
+            stats_gp['opt'] = best_score_i + best_score_t
+            ans.append(['joint'] + [x_i_hat_best, stats_gp, x_t_hat_best])
+
         elif self.config['img_recon_method'] == 'GAN_based' and self.config['txt_recon_method'] == 'GAN_free':
-            x_i_hat, x_t_hat = self.joint_inter_optimizer()
-
-        _, best_score_i, x_i_hat_best, _, _ = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun, indices=self.config.get('img_indices'))
-        _, best_score_t, _, _, x_t_hat_best = self.choose_optimal(x_i_hat, x_t_hat, dryrun=dryrun, indices=self.config.get('txt_indices'))
-
-        stats_gp = {}
-        stats_gp['opt'] = best_score_i + best_score_t
-        ans.append(['joint'] + [x_i_hat_best, stats_gp, x_t_hat_best])
+            ans = self.joint_inter_optimizer()
 
         logger.info(f'Total time: {time.time()-start_time}.')
         return ans
