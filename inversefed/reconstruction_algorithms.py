@@ -1784,7 +1784,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
                 pbar.set_description(
                     (
-                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f} | CLIP: {losses[6]:7.4f} \n Text. loss: {text_rec_loss.item():7.4f} | CLIP: {text_losses[6]:7.4f} "
+                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f} | CLIP: {losses[6]:7.4f} || Text. loss: {text_rec_loss.item():7.4f} | CLIP: {text_losses[6]:7.4f} "
                     )
                 )
 
@@ -1913,7 +1913,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
                 pbar.set_description(
                     (
-                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f} | CLIP: {losses[6]:7.4f} \n Text. loss: {text_rec_loss.item():7.4f} | CLIP: {text_losses[6]:7.4f} "
+                        f" Rec. loss: {rec_loss.item():7.4f} | tv: {losses[0]:7.4f} | KLD: {losses[4]:7.4f} | ImageNorm: {losses[2]:7.4f} | CLIP: {losses[6]:7.4f} || Text. loss: {text_rec_loss.item():7.4f} | CLIP: {text_losses[6]:7.4f} "
                     )
                 )
 
