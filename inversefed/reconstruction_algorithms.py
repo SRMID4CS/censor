@@ -1724,16 +1724,19 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
             labels[trial].requires_grad = True
             labels_opt = labels[trial]
             labels_opt.requires_grad = True
-            optim_param.append(labels_opt)
 
+            optim_param_text = [labels_opt]
 
             for param in optim_param:
                 param.requires_grad = True
+                optim_param_text.append(param.detach())
+
+            optim_param.append(labels_opt.detach())
 
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
             optimizer = torch.optim.Adam(optim_param, lr=self.config['img_lr'])
-            text_optimizer = torch.optim.Adam(optim_param, lr=self.config['txt_lr'])
+            text_optimizer = torch.optim.Adam(optim_param_text, lr=self.config['txt_lr'])
 
             # logger.info("_invert z:{}".format(z.shape))
             pbar = tqdm(range(steps))
@@ -1755,8 +1758,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 text_optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
 
-
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt.detach().clone(), losses, indices=self.config['img_indices'], modality=self.modality)
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt.detach(), losses, indices=self.config['img_indices'], modality=self.modality)
                 rec_loss = closure()
 
                 optimizer.step()
@@ -1771,7 +1773,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                         self.gen_outs[trial][-1].data = (prev_gen_out + deviation).data
 
                 if self.txt_max_iterations >= index*steps + current_step and self.config['txt_recon_method'] == 'GAN_free':
-                    text_closure = self._gradient_closure(text_optimizer, _x[trial].detach().clone(), self.input_data, labels_opt, text_losses, indices=self.config['txt_indices'], modality=self.modality)
+                    text_closure = self._gradient_closure(text_optimizer, _x[trial].detach(), self.input_data, labels_opt, text_losses, indices=self.config['txt_indices'], modality=self.modality)
                     text_rec_loss = text_closure()
 
                     text_optimizer.step()
