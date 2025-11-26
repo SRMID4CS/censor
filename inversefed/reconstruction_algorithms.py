@@ -1697,6 +1697,8 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
         return res
 
     def invert_biggan(self, dummy_z, labels, start_layer, steps, index):
+
+        data_holder = DataHolder()
         
         logger.info("The start_layer:{}".format(start_layer))
         logger.info(f"Running round {index + 1} / {len(self.config['steps'])} of GIFD.")
@@ -1794,6 +1796,12 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                     if not text_recon_completed:
                         logger.info("Text reconstruction for this step is skipped.")
                         text_recon_completed = True
+
+                if self.config['save_intermediate_at_txt'] > 0 and ((index*steps + current_step) % self.config['save_intermediate_at_txt'] == 0):
+                    logger.info(f'Saving/logging intermediate TXT at iteration {(index*steps + current_step)}...')
+                    for num_txt in range(self.num_images):
+                        recon_sentence, tokens = de_embed_text(labels_opt[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                        logger.info(f'Recon Sentence : {recon_sentence}')
 
 
                 pbar.set_description(
