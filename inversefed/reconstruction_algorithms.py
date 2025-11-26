@@ -1735,7 +1735,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 param.requires_grad = True
                 #optim_param_text.append(param.detach())
 
-            txt_for_img_opt = self.labels_opt.detach().clone()
+            txt_for_img_opt = labels_opt.detach().clone()
             txt_for_img_opt.requires_grad = True
             optim_param.append(txt_for_img_opt)
 
