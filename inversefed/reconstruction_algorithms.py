@@ -1737,9 +1737,9 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 param.requires_grad = True
                 #optim_param_text.append(param.detach())
 
-            txt_for_img_opt = labels_opt.detach().clone()
-            txt_for_img_opt.requires_grad = True
-            optim_param.append(txt_for_img_opt)
+            #txt_for_img_opt = labels_opt.detach().clone()
+            #txt_for_img_opt.requires_grad = True
+            #optim_param.append(txt_for_img_opt)
 
             logger.info(f"Total number of trainable parameters: {self.n_trainable}")
 
@@ -1772,7 +1772,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 text_optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
 
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, txt_for_img_opt, losses, indices=self.config['img_indices'], modality=self.modality)
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt.detach(), losses, indices=self.config['img_indices'], modality=self.modality)
                 rec_loss = closure()
 
                 optimizer.step()
@@ -1802,7 +1802,6 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                     for num_txt in range(self.num_images):
                         recon_sentence, tokens = de_embed_text(labels_opt[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
                         logger.info(f'Recon Sentence : {recon_sentence}')
-
 
                 pbar.set_description(
                     (
