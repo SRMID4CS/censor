@@ -7,8 +7,8 @@
   txt_recon_method : 'GAN_free'   #['GAN_free', 'GAN_based']
   img_indices : 'fedcola_img_block_img_emb'  # 'fedcola_img_block_img_emb', 'fedcola_img_block', 'def'
   txt_indices : 'fedcola_txt_block_txt_emb'  # 'fedcola_txt_block_txt_emb', 'fedcola_txt_block', 'def'
-  img_max_iterations : 10
-  txt_max_iterations : 10
+  img_max_iterations : 20
+  txt_max_iterations : 20
   img_convergence_threshold : 0.5
   txt_convergence_threshold : 0.5
 
@@ -59,6 +59,27 @@
   exp_name : 'ex1_joint_FedCola_mm_img_txt'   #Same latent space search
   output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
 
+  gifd : false
+  gias : false
+  ggl : false
+
+  #For GIFD with biggan
+  steps: [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]  #Total 13000
+  lr_io: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+  start_layer: 0
+  end_layer: 13   #fixed
+
+  # For l-1 projection
+  project : true
+  do_project_gen_out: true
+  do_project_noises: false
+  do_project_latent: false
+  max_radius_gen_out: [1000, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500]
+  max_radius_noises: [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]   # designed for stylegan2, here unused.
+  max_radius_latent: [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]   # designed for stylegan2, here unused.
+  
+
   #Choice for GAN-free methods
   geiping : true
   yin : false
@@ -80,4 +101,10 @@
 
   #LR pace for training
   lr_same_pace: false 
+
+  #For CMA-ES in GGL
+  KLD : 0.1  # Recommendation: 0.1 for biggan, 0.02 for stylegan2
+  cma_budget : 800
+  num_sample : 50  # CMA-ESsample times
+
 
