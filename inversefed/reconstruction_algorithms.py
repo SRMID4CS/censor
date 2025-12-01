@@ -1638,8 +1638,10 @@ class GradientReconstructor():
         Compute quality parameter Q(x_m)
         Q(x_m) = 1 - ||∇W' - ∇W|| / ||∇W||
         """
-        gradient_diff_norm = 0.0
-        input_gradient_norm = 0.0
+        # Initialize as tensors with proper device
+        device = input_gradient[0].device
+        gradient_diff_norm = torch.tensor(0.0, device=device)
+        input_gradient_norm = torch.tensor(0.0, device=device)
         
         for i in indices:
             gradient_diff_norm += (trial_gradient[i] - input_gradient[i]).pow(2).sum()
@@ -1650,11 +1652,11 @@ class GradientReconstructor():
         
         # Avoid division by zero
         if input_gradient_norm < 1e-10:
-            return torch.tensor(0.0, device=input_gradient[0].device)
+            return torch.tensor(0.0, device=device)
         
         quality = 1.0 - (gradient_diff_norm / input_gradient_norm)
         return torch.clamp(quality, 0.0, 1.0)  # Ensure Q in [0,1]
-    
+
 
     def compute_fused_embedding(self, img_embed, txt_embed, w_img, w_txt):
         """
