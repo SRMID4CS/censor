@@ -2201,7 +2201,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
                         if (iteration + 1 == self.max_iterations) or iteration % save_interval == 0:
                             logger.info(f'It: {iteration}. Image Rec. loss: {image_rec_loss:2.4f} | tv: {image_losses[0]:7.4f} | bn: {image_losses[1]:7.4f} | ImageNorm: {image_losses[2]:7.4f} | gr: {image_losses[3]:7.4f} | kld: {image_losses[4]:7.4f} | patch: {image_losses[5]:7.4f} | CLIP: {image_losses[6]:7.4f} ')
-                            logger.info(f'It: {iteration}. Text Rec. loss: {text_rec_loss:2.4f} ')
+                            logger.info(f'It: {iteration}. Text Rec. loss: {text_rec_loss:2.4f} | CLIP: {text_losses[6]:7.4f} ')
                             if self.config['z_norm'] > 0:
                                 logger.info(torch.norm(dummy_z[trial], 2).item())
 
