@@ -1530,9 +1530,9 @@ class GradientReconstructor():
                         z_img, z_fused, dim=-1).mean()
                     clip_fused_loss_txt = 1 - torch.nn.functional.cosine_similarity(
                         z_txt, z_fused, dim=-1).mean()
-                    
-                    clip_fused_loss = (clip_fused_loss_img + clip_fused_loss_txt) / 2
-                    
+
+                    clip_fused_loss = clip_fused_loss_img if 'img' in indices else clip_fused_loss_txt
+
                     rec_loss += self.config['CLIP_fused_loss'] * clip_fused_loss
                     
                     # Check convergence (Eq. 7)
