@@ -8,7 +8,7 @@
   img_indices : 'fedcola_img_block_img_emb'  # 'fedcola_img_block_img_emb', 'fedcola_img_block', 'def'
   txt_indices : 'fedcola_txt_block_txt_emb'  # 'fedcola_txt_block_txt_emb', 'fedcola_txt_block', 'def'
   img_max_iterations : 10
-  txt_max_iterations : 10
+  txt_max_iterations : 30000
   img_convergence_threshold : 0.5
   txt_convergence_threshold : 0.5
   
@@ -22,7 +22,7 @@
   restarts : 4
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 1     # the number of experiments / inverted images
+  num_exp : 10     # the number of experiments / inverted images
   target_id : 10
   target_id_increment : 10 # the incrementation of target image id
   unrelated_target_offset : -1 # the offset for unrelated target
@@ -42,8 +42,8 @@
   model_load_dir : '/home/ubuntu/mnt-disk/results/fedcola/exp_name'  # the directory to load saved models from
   save_model : False  # whether to save the model or not
 
-  save_intermediate_at_img : 10  # the interval at which to save intermediate results, -1 for no intermediate saving
-  save_intermediate_at_txt : 10  # the interval at which to save intermediate results, -1 for no intermediate saving
+  save_intermediate_at_img : 100  # the interval at which to save intermediate results, -1 for no intermediate saving
+  save_intermediate_at_txt : 100  # the interval at which to save intermediate results, -1 for no intermediate saving
   stop_at_text_perf_match : False  # whether to stop optimization when text is perfectly matched
 
   #For GIAS
@@ -69,9 +69,9 @@
 
   #For GIFD with biggan
   #steps: [2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000]  #Total 26000
-  # steps: [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]  #Total 13000
+  steps: [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]  #Total 13000
   #steps: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]  #Total 1300
-  steps: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]  #Total 130
+  #steps: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]  #Total 130
   lr_io: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 
   start_layer: 0

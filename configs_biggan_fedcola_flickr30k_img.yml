@@ -11,9 +11,9 @@
   restarts : 4
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 1     # the number of experiments / inverted images
+  num_exp : 10     # the number of experiments / inverted images
   target_id : 10
-  target_id_increment : 1 # the incrementation of target image id
+  target_id_increment : 10 # the incrementation of target image id
   lr : 0.03
   total_variation : 0.0001     #the coefficient of total variation
   bn_stat : 0       #choose if we use bn statistic to regularizer
@@ -30,6 +30,8 @@
 
   save_intermediate_at_img : 10  # the interval at which to save intermediate results, -1 for no intermediate saving
   save_intermediate_at_txt : 10  # the interval at which to save intermediate results, -1 for no intermediate saving
+  stop_at_text_perf_match : False  # whether to stop optimization when text is perfectly matched
+
 
   #For GIAS
   gias_iterations : 8000  #Maximum number of gias iterations for reconstruction.
@@ -38,11 +40,11 @@
   # For input data
   generative_model : 'BigGAN'
   gen_dataset : 'ImageNet64'
-  dataset : 'Flickr30k'   # ['Flickr30k', 'Flickr30k_img', 'Flickr30k_txt']     
+  dataset : 'Flickr30k_img'   # ['Flickr30k', 'Flickr30k_img', 'Flickr30k_txt']     
   data_path : 'N/A'  # specify your dataset path
 
   #For output data
-  exp_name : 'ex1_biggan_fedcola_img'   #Same latent space search
+  exp_name : 'ex1_biggan_flicker30k_fedcola_img'   #Same latent space search
   output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
   #params for algorithm choice
   gifd : true
@@ -74,7 +76,7 @@
   lr_same_pace: false 
 
   # training epoch
-  train_epochs: 3
+  train_epochs: 1
   our_num_tries : 10
 
   #Defense parameter
