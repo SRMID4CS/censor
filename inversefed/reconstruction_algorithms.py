@@ -488,7 +488,7 @@ class GradientReconstructor():
         start_time = time.time()
         ans = []
         if self.generative_model_name:  # GAN applying
-            self.init_var(infer_labels)
+            self.init_var(None)
             old_TV = self.config['total_variation']
             dummy_z = [None for _ in range(self.config['restarts'])]
             for trial in range(self.config['restarts']):
