@@ -94,6 +94,8 @@ DEFAULT_CONFIG = dict(signed=False,
                       KLD=0,
                       patch_prior=0,
                       CLIP_loss=0,
+                      CLIP_fused_loss=-1,
+                      CLIP_convergence_threshold=0.5,
                       patch_size=16,
                       #LR pace for training
                       lr_same_pace=False,
@@ -191,6 +193,10 @@ class GradientReconstructor():
         self.num_samples = config['num_sample']  # For CMA-ES
         self.mean_std = mean_std
         self.num_images = num_images    
+
+        # Add quality tracking
+        self.quality_img = None
+        self.quality_txt = None
 
         if self.config['model'] == 'FedCola_IMG':
             self.modality = 'img'
@@ -1419,6 +1425,14 @@ class GradientReconstructor():
                 #         print(f"Parameter {p.shape} is unused in this forward pass.")
                 # Output would be like: "Parameter torch.Size([30522, 384]) is unused in this forward pass."
                 gradient = [g if g is not None else torch.zeros_like(p) for g, p in zip(gradient, self.model.parameters())]
+
+                # Compute quality for each modality
+                img_indices = select_indices_fedcola(self.model, select=["img_embedding", "img_blocks"])
+                txt_indices = select_indices_fedcola(self.model, select=["txt_embedding", "txt_blocks"])
+                
+                self.quality_img = self.compute_quality(gradient_img, input_gradient[i], img_indices)
+                self.quality_txt = self.compute_quality(gradient_txt, input_gradient[i], txt_indices)
+
                 #apply defense
                 if self.config['defense_method'] is not None:
                     if 'noise' in self.config['defense_method']:
@@ -1481,6 +1495,52 @@ class GradientReconstructor():
                     clip_loss = 1 - self.clip_similarity(x_trial_clamp.detach(), recon_sentence, device=self.device)
                     rec_loss += self.config['CLIP_loss'] * clip_loss
                     losses[6] = clip_loss.item()
+
+                # Add fused CLIP loss
+                if self.config['CLIP_fused_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
+                    dm, ds = self.mean_std
+                    x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
+                    
+                    if self.config['init_text'] != 'ground_truth':
+                        recon_sentence, tokens = de_embed_text(batch_label[i], 
+                                                               bert_embedding=data_holder.get('bert_embedding'), 
+                                                               tokenizer=data_holder.get('bert_tokenizer'))
+                    else:
+                        recon_sentence = get_text_from_tokens(batch_label[i], 
+                                                             tokenizer=data_holder.get('bert_tokenizer'))
+                    
+                    # Get CLIP embeddings (Eq. 4)
+                    z_img, z_txt = self.compute_clip_embeddings(x_trial_clamp.detach(), recon_sentence)
+                    
+                    # Compute normalized quality weights (Eq. 3)
+                    quality_sum = self.quality_img + self.quality_txt
+                    if quality_sum > 1e-10:
+                        w_img = self.quality_img / quality_sum
+                        w_txt = self.quality_txt / quality_sum
+                    else:
+                        w_img = w_txt = torch.tensor(0.5, device=self.device)
+                    
+                    # Compute fused embedding (Eq. 5)
+                    z_fused = self.compute_fused_embedding(z_img, z_txt, w_img, w_txt)
+                    
+                    # Compute fused cross-modal regularization (Eq. 6)
+                    # Using cosine distance
+                    clip_fused_loss_img = 1 - torch.nn.functional.cosine_similarity(
+                        z_img, z_fused, dim=-1).mean()
+                    clip_fused_loss_txt = 1 - torch.nn.functional.cosine_similarity(
+                        z_txt, z_fused, dim=-1).mean()
+                    
+                    clip_fused_loss = (clip_fused_loss_img + clip_fused_loss_txt) / 2
+                    
+                    rec_loss += self.config['CLIP_fused_loss'] * clip_fused_loss
+                    
+                    # Check convergence (Eq. 7)
+                    sim_cross = torch.nn.functional.cosine_similarity(z_img, z_txt, dim=-1).mean()
+                    if sim_cross > self.config['CLIP_convergence_threshold']:
+                        logger.info(f"Cross-modal convergence achieved: sim={sim_cross:.4f}")
+                    
+                    # Store for logging
+                    losses[6] = clip_fused_loss.item()
 
                 total_loss += rec_loss
 
@@ -1572,6 +1632,60 @@ class GradientReconstructor():
         cosine_similarity = torch.nn.functional.cosine_similarity(outputs.image_embeds, outputs.text_embeds, dim=-1).squeeze()
         
         return cosine_similarity
+
+    def compute_quality(self, trial_gradient, input_gradient, indices):
+        """
+        Compute quality parameter Q(x_m)
+        Q(x_m) = 1 - ||∇W' - ∇W|| / ||∇W||
+        """
+        gradient_diff_norm = 0.0
+        input_gradient_norm = 0.0
+        
+        for i in indices:
+            gradient_diff_norm += (trial_gradient[i] - input_gradient[i]).pow(2).sum()
+            input_gradient_norm += input_gradient[i].pow(2).sum()
+        
+        gradient_diff_norm = gradient_diff_norm.sqrt()
+        input_gradient_norm = input_gradient_norm.sqrt()
+        
+        # Avoid division by zero
+        if input_gradient_norm < 1e-10:
+            return torch.tensor(0.0, device=input_gradient[0].device)
+        
+        quality = 1.0 - (gradient_diff_norm / input_gradient_norm)
+        return torch.clamp(quality, 0.0, 1.0)  # Ensure Q in [0,1]
+    
+
+    def compute_fused_embedding(self, img_embed, txt_embed, w_img, w_txt):
+        """
+        Compute fused embedding as per Eq. (5) from paper.
+        z_fused = Σ_m w_m * z_m
+        """
+        z_fused = w_img * img_embed + w_txt * txt_embed
+        return z_fused
+
+    def compute_clip_embeddings(self, image, text):
+        """
+        Get CLIP embeddings for image and text as per Eq. (4).
+        z_i, z_t = CLIP(x_i), CLIP(x_t)
+        """
+        # Convert image to proper format
+        if isinstance(image, torch.Tensor):
+            image_np = image.detach().cpu().numpy()
+            if len(image_np.shape) == 4:
+                image_np = image_np.transpose(0, 2, 3, 1).squeeze(0)
+            elif len(image_np.shape) == 3:
+                image_np = image_np.transpose(1, 2, 0)
+            image_np = (image_np * 255).astype(np.uint8)
+            image = image_np
+        
+        # Get embeddings
+        inputs = self.CLIP_processor(text=text, images=image, return_tensors="pt", 
+                                     truncation=True, padding=True).to(self.device)
+        with torch.no_grad():
+            outputs = self.CLIP_model(**inputs)
+        
+        return outputs.image_embeds, outputs.text_embeds
 
 
 class MultimodalJointGradientReconstructor(GradientReconstructor):

@@ -359,6 +359,8 @@ if __name__ == "__main__":
                     patch_prior=config['patch_prior'],
                     patch_size=args.patch_size,
                     CLIP_loss=config['CLIP_loss'],
+                    CLIP_fused_loss=config['CLIP_fused_loss'],
+                    CLIP_convergence_threshold=config['CLIP_convergence_threshold'],
                     image_norm=config['image_norm'],
                     z_norm=args.z_norm,
                     group_lazy=config['group_lazy'],
