@@ -1,0 +1,110 @@
+  Introduction : 'GAN-free methods for gradient inversion attack.'
+  
+  optim : 'joint'    #optim method, ['GAN_based', 'GAN_free']
+  img_lr : 0.1
+  txt_lr : 0.1
+  img_recon_method : 'GAN_free'   #['GAN_free', 'GAN_based']
+  txt_recon_method : 'GAN_free'   #['GAN_free', 'GAN_based']
+  img_indices : 'fedcola_img_block_img_emb'  # 'fedcola_img_block_img_emb', 'fedcola_img_block', 'def'
+  txt_indices : 'fedcola_txt_block_txt_emb'  # 'fedcola_txt_block_txt_emb', 'fedcola_txt_block', 'def'
+  img_max_iterations : 20
+  txt_max_iterations : 20
+  img_convergence_threshold : 0.5
+  txt_convergence_threshold : 0.5
+
+  cost_fn : 'sim_cmpr0'   #the type of loss function 
+  set_seed :       # random seed. Following geiping et. al., we do not give random seed for GAN-free methods.
+  indices : 'fedcola_img_emb' # 'fedcola_img_block_img_emb' # 'fedcola_img_block'      #decide which part of gradients to be involved in the final gradients match loss.
+  weights : 'equal'    #weight of every graident scalar's matching loss
+  init : 'randn'     #how we initial the original latent code.
+  init_text : 'randn'    #how we initial the original latent code of text embedding.
+  model : 'FedCola_IMG_TXT'   #FL model ['FedCola_IMG', 'FedCola_TXT', 'FedCola_IMG_TXT']
+  restarts : 4
+
+  num_images : 1   # the number of images to reconstruct at a batch
+  num_exp : 1     # the number of experiments
+  target_id : 10 # the target image id + iterative incrementation of id
+  target_id_increment : 10 # the incrementation of target image id
+  unrelated_target_offset : -1 # the offset for unrelated target
+  lr : 0.1            #learning rate for Yin et al.
+  total_variation : 0.0001     #the coefficient of total variation 
+  image_norm : 0    #the coefficient of norm regularizer for Yin et al.
+  group_lazy : 0    #choose if we use group lazy regularization for Yin et al.
+  patch_prior : 0.0001   #the coefficient of patch prior regularizer
+  CLIP_loss : -1 #0.01    #the coefficient of CLIP loss regularizer
+  CLIP_fused_loss : 1   #the coefficient of fused CLIP loss regularizer
+  CLIP_convergence_threshold : 0.5  # the convergence threshold for CLIP loss
+  bn_stat : 0       #choose if we use bn statistic to regularizer 
+
+  max_iterations : 10    #Maximum number of iterations for reconstruction.
+
+  use_saved_models : False  # whether to use saved models or not
+  model_load_dir : '/home/ubuntu/mnt-disk/repos/FedCola/results/FedCola/FedCola_250805_023340'  # the directory to load saved models from
+
+  save_intermediate_at_img : 2000  # the interval at which to save intermediate results, -1 for no intermediate saving
+  save_intermediate_at_txt : 100  # the interval at which to save intermediate results, -1 for no intermediate saving
+  stop_at_text_perf_match : True  # whether to stop optimization when text is perfectly matched
+
+  save_model : False  # whether to save the model or not
+
+  gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
+
+  # For input data
+  generative_model : ''
+  gen_dataset : 'ImageNet64'    # ['ImageNet64', 'FFHQ64']
+  dataset : 'Flickr30k'   # ['Flickr30k', 'Flickr30k_img', 'Flickr30k_txt']     
+  data_path : 'N/A'  # specify your dataset path
+
+  #For output data
+  exp_name : 'ex1_joint_FedCola_flickr_img_txt'   #Same latent space search
+  output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
+
+  gifd : false
+  gias : false
+  ggl : false
+
+  #For GIFD with biggan
+  steps: [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]  #Total 13000
+  lr_io: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+  start_layer: 0
+  end_layer: 13   #fixed
+
+  # For l-1 projection
+  project : true
+  do_project_gen_out: true
+  do_project_noises: false
+  do_project_latent: false
+  max_radius_gen_out: [1000, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500]
+  max_radius_noises: [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]   # designed for stylegan2, here unused.
+  max_radius_latent: [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]   # designed for stylegan2, here unused.
+  
+
+  #Choice for GAN-free methods
+  geiping : true
+  yin : false
+
+  train_epochs: 1
+  our_num_tries : 10
+  #Defense parameter
+  defense_method : None
+  defense_setting : 
+      noise : None
+      clipping : None
+      compression : None
+      representation : None
+      orthogonal : null
+
+
+  # The pre-trained StyleGAN checkpoint
+  ckpt: None
+
+  #LR pace for training
+  lr_same_pace: false 
+
+  #For CMA-ES in GGL
+  KLD : 0.1  # Recommendation: 0.1 for biggan, 0.02 for stylegan2
+  cma_budget : 800
+  num_sample : 50  # CMA-ESsample times
+
+
