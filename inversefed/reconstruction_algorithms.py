@@ -1429,9 +1429,10 @@ class GradientReconstructor():
                 # Compute quality for each modality
                 img_indices = select_indices_fedcola(self.model, select=["img_embedding", "img_blocks"])
                 txt_indices = select_indices_fedcola(self.model, select=["txt_embedding", "txt_blocks"])
-                
-                self.quality_img = self.compute_quality(gradient, input_gradient[i], img_indices)
-                self.quality_txt = self.compute_quality(gradient, input_gradient[i], txt_indices)
+
+                if self.config['CLIP_fused_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
+                    self.quality_img = self.compute_quality(gradient, input_gradient[i], img_indices)
+                    self.quality_txt = self.compute_quality(gradient, input_gradient[i], txt_indices)
 
                 #apply defense
                 if self.config['defense_method'] is not None:
