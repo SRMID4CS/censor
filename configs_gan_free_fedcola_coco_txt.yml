@@ -46,7 +46,7 @@
   geiping : True
   yin : False
 
-  train_epochs: 5
+  train_epochs: 1
   our_num_tries : 10
   #Defense parameter
   defense_method : None

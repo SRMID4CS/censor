@@ -49,7 +49,7 @@ output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
 geiping : true
 yin : false
 
-train_epochs: 2
+train_epochs: 1
 our_num_tries : 10
 #Defense parameter
 defense_method : None
