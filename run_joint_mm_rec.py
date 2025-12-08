@@ -582,8 +582,12 @@ if __name__ == "__main__":
                 if G is None:
                     G = rec_machine.G
 
+                if 'CIFAR' in config['dataset'] or 'Cifar' in config['dataset'] or 'cifar' in config['dataset']:
+                    text_shape = (10, 384)
+                else:
+                    text_shape = (20, 384)
 
-                result = rec_machine.reconstruct(input_gradient, None, img_shape=input_shape, dryrun=iter_dryrun)
+                result = rec_machine.reconstruct(input_gradient, None, img_shape=input_shape, dryrun=iter_dryrun, text_shape=text_shape)
                 if iter_dryrun:
                     continue
             else:
@@ -615,7 +619,12 @@ if __name__ == "__main__":
                     labels_to_support = labels
                     logger.info("Real labels:{}".format(labels))
 
-                result = rec_machine.reconstruct(input_parameters, labels_to_support, img_shape=input_shape, dryrun=args.dryrun)
+                if 'CIFAR' in config['dataset'] or 'Cifar' in config['dataset'] or 'cifar' in config['dataset']:
+                    text_shape = (10, 384)
+                else:
+                    text_shape = (20, 384)
+
+                result = rec_machine.reconstruct(input_parameters, labels_to_support, img_shape=input_shape, dryrun=args.dryrun, text_shape=text_shape)
 
             #lpips
             lpips_loss = lpips.LPIPS(net='vgg', spatial=False).to(**setup)
