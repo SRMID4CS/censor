@@ -808,7 +808,7 @@ class GradientReconstructor():
 
                 if start_layer == 0 and self.config['init_ys'] == 'optim':
                     # make the ys a 1 -hot vector for generation
-                    ys_for_gen = torch.nn.functional.one_hot(self.ys[trial].argmax(dim=1), num_classes=1000).to(self.device)
+                    ys_for_gen = torch.nn.functional.softmax(self.ys[trial], dim=-1)
                 else:
                     ys_for_gen = self.ys[trial]
 
@@ -847,6 +847,7 @@ class GradientReconstructor():
                     # self.G_io.to(self.device)
                 intermediate_out, new_ys = self.G_io(self.gen_outs[trial][-1], self.ys[trial].float(), 1)   if start_layer > 0 else self.G_io(dummy_z[trial], self.ys[trial].float(), 1)
                 self.gen_outs[trial].append(intermediate_out)
+                ys_for_log = self.ys[trial].argmax(dim=1).detach().cpu().numpy()
                 self.ys[trial] = new_ys
                 self.G_io.end_layer = self.config['end_layer']
                 # self.G_io = nn.DataParallel(self.G_io)
@@ -859,7 +860,7 @@ class GradientReconstructor():
 
             #log ys arg max index
             if start_layer == 0 and self.config['init_ys'] == 'optim':
-                logger.info(f"[end] ys arg max index of trial {trial}: {self.ys[trial].argmax(dim=1).detach().cpu().numpy()}")
+                logger.info(f"[end] ys arg max index of trial {trial}: {ys_for_log}")
 
         return _x, labels
 
