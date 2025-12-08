@@ -8,7 +8,7 @@
   img_indices : 'fedcola_img_block_img_emb'  # 'fedcola_img_block_img_emb', 'fedcola_img_block', 'def'
   txt_indices : 'fedcola_txt_block_txt_emb'  # 'fedcola_txt_block_txt_emb', 'fedcola_txt_block', 'def'
   img_max_iterations : 20
-  txt_max_iterations : 30000
+  txt_max_iterations : 20
   img_convergence_threshold : 0.5
   txt_convergence_threshold : 0.5
 
