@@ -117,6 +117,7 @@ DEFAULT_CONFIG = dict(signed=False,
                       txt_indices='fedcola_txt_block_txt_emb',
                       img_convergence_threshold=0.5,
                       txt_convergence_threshold=0.5,
+                      init_ys='rand'  # [label, rand, optim]  # how to initialize the class probabilities ys for BigGAN
                       )
 
 def _validate_config(config):
@@ -600,8 +601,12 @@ class GradientReconstructor():
             
             self.noises = deepcopy(self.initial_noises)
         elif self.generative_model_name in ['BigGAN']:
-            if labels is None:
-                self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
+            if labels is None or config['init_ys'] != 'label':
+                if config['init_ys'] == 'rand':
+                    self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
+                elif config['init_ys'] == 'optim':
+                    #generate a vector to optimize classes softly but same dims as above using uniform distribution
+                    self.ys = [torch.uniform(0, 1, (1,1000), requires_grad=True).to(self.device) for i in range(self.config['restarts'])]
             else:
                 self.ys = [torch.nn.functional.one_hot(labels, num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
 
@@ -758,6 +763,10 @@ class GradientReconstructor():
 
             if start_layer == 0:
                 optim_param = [dummy_z[trial]]
+                if self.config['init_ys'] == 'optim':
+                    self.ys[trial].requires_grad = True
+                    optim_param.append(self.ys[trial])
+                    
                 ps = SphericalOptimizer([dummy_z[trial]])  #pgd
                 self.count_trainable_params(G=self.G_io, z=dummy_z[0])
             else:
@@ -794,7 +803,13 @@ class GradientReconstructor():
                 # optimizer = torch.optim.Adam([optim_param[0][select_idx]], lr=learning_rate)
                 optimizer.param_groups[0]['lr'] = lr
 
-                _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], ys=self.ys[trial], img_size=img_size, start_layer=start_layer) 
+                if start_layer == 0 and self.config['init_ys'] == 'optim':
+                    # make the ys a 1 -hot vector for generation
+                    ys_for_gen = torch.nn.functional.one_hot(self.ys[trial].argmax(dim=1), num_classes=1000).to(self.device)
+                else:
+                    ys_for_gen = self.ys[trial]
+
+                _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], ys=ys_for_gen, img_size=img_size, start_layer=start_layer) 
                 losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                 optimizer.zero_grad()
                 self.dummy_z = dummy_z[trial]
@@ -829,7 +844,10 @@ class GradientReconstructor():
                     # self.G_io.to(self.device)
                 intermediate_out, new_ys = self.G_io(self.gen_outs[trial][-1], self.ys[trial].float(), 1)   if start_layer > 0 else self.G_io(dummy_z[trial], self.ys[trial].float(), 1)
                 self.gen_outs[trial].append(intermediate_out)   
-                self.ys[trial] = new_ys
+                if self.config['init_ys'] == 'optim' and start_layer == 0:
+                    self.ys[trial] = torch.nn.functional.one_hot(self.ys[trial].argmax(dim=1), num_classes=1000).detach().clone().to(self.device)
+                else:
+                    self.ys[trial] = new_ys
                 self.G_io.end_layer = self.config['end_layer']
                 # self.G_io = nn.DataParallel(self.G_io)
             # if self.image_project:

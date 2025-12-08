@@ -50,6 +50,8 @@
   gias : false
   ggl : false
 
+  init_ys: 'optim' # [label, rand, optim]  # how to initialize the class probabilities ys for BigGAN
+
   #For GIFD with biggan
   #steps: [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]  #Total 13000
   steps: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]  #Total 13000

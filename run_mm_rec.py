@@ -312,6 +312,7 @@ if __name__ == "__main__":
                         save_intermediate_at_img=config['save_intermediate_at_img'],
                         save_intermediate_at_txt=config['save_intermediate_at_txt'],
                         stop_at_text_perf_match=config['stop_at_text_perf_match'],
+                        init_ys=config['init_ys'],
                         )
         elif config['optim'] == 'GAN_free':
             config_m = dict(cost_fn=config['cost_fn'],
@@ -345,6 +346,7 @@ if __name__ == "__main__":
                         save_intermediate_at_img=config['save_intermediate_at_img'],
                         save_intermediate_at_txt=config['save_intermediate_at_txt'],
                         stop_at_text_perf_match=config['stop_at_text_perf_match'],
+                        init_ys=config['init_ys'],
                         )
 
         G = None
