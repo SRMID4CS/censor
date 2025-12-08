@@ -808,7 +808,7 @@ class GradientReconstructor():
 
                 if start_layer == 0 and self.config['init_ys'] == 'optim':
                     # make the ys a 1 -hot vector for generation
-                    ys_for_gen = torch.nn.functional.softmax(self.ys[trial], dim=-1)
+                    ys_for_gen = torch.nn.functional.softmax(self.ys[trial], dim=-1).to(self.device)
                 else:
                     ys_for_gen = self.ys[trial]
 
