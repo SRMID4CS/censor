@@ -8,7 +8,7 @@
   img_indices : 'fedcola_img_block_img_emb'  # 'fedcola_img_block_img_emb', 'fedcola_img_block', 'def'
   txt_indices : 'fedcola_txt_block_txt_emb'  # 'fedcola_txt_block_txt_emb', 'fedcola_txt_block', 'def'
   img_max_iterations : 20
-  txt_max_iterations : 20
+  txt_max_iterations : 30000
   img_convergence_threshold : 0.5
   txt_convergence_threshold : 0.5
 
@@ -32,7 +32,7 @@
   group_lazy : 0    #choose if we use group lazy regularization for Yin et al.
   patch_prior: 0.00001   #the coefficient of patch prior regularizer
   CLIP_loss : -1 #0.01    #the coefficient of CLIP loss regularizer
-  CLIP_fused_loss : 1   #the coefficient of fused CLIP loss regularizer
+  CLIP_fused_loss : 0.01   #the coefficient of fused CLIP loss regularizer
   CLIP_convergence_threshold : 0.5  # the convergence threshold for CLIP loss
   bn_stat : 0       #choose if we use bn statistic to regularizer 
 

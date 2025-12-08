@@ -20,7 +20,7 @@
   image_norm : 0    #the coefficient of norm regularizer
   group_lazy : 0    #choose if we use group lazy regularization
   patch_prior: 0.00001   #the coefficient of patch prior regularizer
-  CLIP_loss : -1 # 0.01    #the coefficient of CLIP loss regularizer
+  CLIP_loss : 0.01    #the coefficient of CLIP loss regularizer
 
   max_iterations : 100   #Maximum number of iterations for latent reconstruction.
   
