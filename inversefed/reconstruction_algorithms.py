@@ -644,7 +644,7 @@ class GradientReconstructor():
                 labels[trial].requires_grad = True
                 labels_opt = labels[trial]
                 labels_opt.requires_grad = True
-                to_optimize = var_list.copy().append(labels_opt)
+                #to_optimize = var_list.copy().append(labels_opt)
             else:
                 labels_opt = labels
                 to_optimize = var_list.copy()
@@ -1949,6 +1949,9 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
 
     def invert_stylegan2(self, dummy_z, labels, start_layer, noise_list, steps, index):
+
+        data_holder = DataHolder()
+
         learning_rate = self.config['lr_io'][index]
         logger.info(f"Running round {index + 1} / {len(self.config['steps'])} of GIFD.")
 
@@ -1986,13 +1989,27 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
             labels[trial].requires_grad = True
             labels_opt = labels[trial]
             labels_opt.requires_grad = True
-            to_optimize = var_list.copy().append(labels_opt)
 
-            for param in to_optimize:
+            img_for_text_opt = self.images.detach().clone()[trial]
+            img_for_text_opt.requires_grad = True
+            optim_param_text = [labels_opt, img_for_text_opt]
+
+            for param in optim_param:
                 param.requires_grad = True
+                #optim_param_text.append(param.detach())
 
-            optimizer = torch.optim.Adam(to_optimize, lr=self.config['img_lr'])
-            text_optimizer = torch.optim.Adam(to_optimize, lr=self.config['txt_lr'])
+            #txt_for_img_opt = labels_opt.detach().clone()
+            #txt_for_img_opt.requires_grad = True
+            #optim_param.append(txt_for_img_opt)
+
+            optimizer = torch.optim.Adam(optim_param, lr=self.config['img_lr'])
+
+            if self.text_optimizers[trial] is None:
+                self.text_optimizers[trial] = torch.optim.Adam(optim_param_text, lr=self.config['txt_lr'])
+            else:
+                self.text_optimizers[trial].param_groups[0]['params'] = optim_param_text
+
+            text_optimizer = self.text_optimizers[trial]
 
             ps = SphericalOptimizer([dummy_z[trial]] + self.noises[trial])  #pgd
             pbar = tqdm(range(steps))
@@ -2015,7 +2032,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 optimizer.zero_grad()
                 text_optimizer.zero_grad()
 
-                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt.detach().clone(), losses, indices=self.config['img_indices'], modality=self.modality)
+                closure = self._gradient_closure(optimizer, _x[trial], self.input_data, labels_opt.detach(), losses, indices=self.config['img_indices'], modality=self.modality)
                 rec_loss = closure()
                 optimizer.step()
 
@@ -2043,7 +2060,7 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                             var_list[i+1].data = (prev_noises[i] + deviation).data
 
                 if self.txt_max_iterations >= index*steps + i and self.config['txt_recon_method'] == 'GAN_free':
-                    text_closure = self._gradient_closure(text_optimizer, _x[trial].detach().clone(), self.input_data, labels_opt, text_losses, indices=self.config['txt_indices'], modality=self.modality)
+                    text_closure = self._gradient_closure(text_optimizer, img_for_text_opt, self.input_data, labels_opt, text_losses, indices=self.config['txt_indices'], modality=self.modality)
                     text_rec_loss = text_closure()
                     text_optimizer.step()
                 else:
@@ -2051,6 +2068,12 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                     if not text_recon_completed:
                         logger.info("Text reconstruction for this step is skipped.")
                         text_recon_completed = True
+
+                if self.config['save_intermediate_at_txt'] > 0 and ((index*steps + current_step) % self.config['save_intermediate_at_txt'] == 0):
+                    logger.info(f'Saving/logging intermediate TXT at iteration {(index*steps + current_step)}...')
+                    for num_txt in range(self.num_images):
+                        recon_sentence, tokens = de_embed_text(labels_opt[num_txt], bert_embedding=data_holder.get('bert_embedding'), tokenizer=data_holder.get('bert_tokenizer'))
+                        logger.info(f'Recon Sentence : {recon_sentence}')
 
                 pbar.set_description(
                     (
