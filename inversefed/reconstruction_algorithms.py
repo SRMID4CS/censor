@@ -797,6 +797,9 @@ class GradientReconstructor():
             # c = torch.nn.functional.one_hot(self.labels, num_classes = self.fl_setting['num_classes']).to(self.input_gradient[0].device)
 
 
+            #log ys arg max index
+            if start_layer == 0 and self.config['init_ys'] == 'optim':
+                logger.info(f"[start] ys arg max index of trial {trial}: {self.ys[trial].argmax(dim=1).detach().cpu().numpy()}")
             for current_step in pbar:
                 # img_gen = self.generator(z, c.float(), 1)
                 lr = self.get_lr(current_step / steps, learning_rate)
@@ -853,6 +856,10 @@ class GradientReconstructor():
                 # Project into image space
                 _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
                 _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
+
+            #log ys arg max index
+            if start_layer == 0 and self.config['init_ys'] == 'optim':
+                logger.info(f"[end] ys arg max index of trial {trial}: {self.ys[trial].argmax(dim=1).detach().cpu().numpy()}")
 
         return _x, labels
 
