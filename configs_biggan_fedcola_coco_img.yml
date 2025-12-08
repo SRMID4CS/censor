@@ -19,7 +19,7 @@
   bn_stat : 0       #choose if we use bn statistic to regularizer
   image_norm : 0    #the coefficient of norm regularizer
   group_lazy : 0    #choose if we use group lazy regularization
-  patch_prior : -1   #the coefficient of patch prior regularizer
+  patch_prior: 0.00001   #the coefficient of patch prior regularizer
 
   max_iterations : 100   #Maximum number of iterations for latent reconstruction.
   
@@ -73,7 +73,7 @@
   lr_same_pace: false 
 
   # training epoch
-  train_epochs: 3
+  train_epochs: 1
   our_num_tries : 10
 
   #Defense parameter

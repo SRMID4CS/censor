@@ -19,7 +19,7 @@ lr : 0.1            #learning rate for Yin et al.
 total_variation : 0.0001     #the coefficient of total variation 
 image_norm : -1    #the coefficient of norm regularizer for Yin et al.
 group_lazy : -1    #choose if we use group lazy regularization for Yin et al.
-patch_prior : 0.0001   #the coefficient of patch prior regularizer
+patch_prior: 0.00001   #the coefficient of patch prior regularizer
 CLIP_loss : 0 #0.01    #the coefficient of CLIP loss regularizer
 
 bn_stat : 0       #choose if we use bn statistic to regularizer 
