@@ -8,3 +8,5 @@ data/*
 N/*
 
 shape_predictor_68_face_landmarks.dat
+
+inversefed/genmodels/stylegan2_io/stylegan2-ffhq-config-f.pt
