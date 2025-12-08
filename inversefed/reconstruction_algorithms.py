@@ -601,10 +601,10 @@ class GradientReconstructor():
             
             self.noises = deepcopy(self.initial_noises)
         elif self.generative_model_name in ['BigGAN']:
-            if labels is None or config['init_ys'] != 'label':
-                if config['init_ys'] == 'rand':
+            if labels is None or self.config['init_ys'] != 'label':
+                if self.config['init_ys'] == 'rand':
                     self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
-                elif config['init_ys'] == 'optim':
+                elif self.config['init_ys'] == 'optim':
                     #generate a vector to optimize classes softly but same dims as above using uniform distribution
                     self.ys = [torch.uniform(0, 1, (1,1000), requires_grad=True).to(self.device) for i in range(self.config['restarts'])]
             else:
