@@ -409,7 +409,8 @@ class GradientReconstructor():
                 kernel_size = 512 // self.image_size
             else:
                 kernel_size = 1024 // self.image_size
-            dummy_data = torch.nn.functional.avg_pool2d(dummy_data, kernel_size)
+            #dummy_data = torch.nn.functional.avg_pool2d(dummy_data, kernel_size)
+            dummy_data = torch.nn.functional.interpolate(dummy_data, size=(self.image_size, self.image_size), mode='area')
         elif generative_model_name in ['BigGAN']:
             if self.config['optim'] == 'CMA-ES':
                 with torch.no_grad(): 
