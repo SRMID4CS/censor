@@ -606,7 +606,7 @@ class GradientReconstructor():
                     self.ys = [torch.nn.functional.one_hot(torch.randint(0, 1000, (1,)), num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
                 elif self.config['init_ys'] == 'optim':
                     #generate a vector to optimize classes softly but same dims as above using uniform distribution
-                    self.ys = [torch.uniform(0, 1, (1,1000), requires_grad=True).to(self.device) for i in range(self.config['restarts'])]
+                    self.ys = [torch.FloatTensor(1, 1000).uniform_(0, 1).to(self.device).requires_grad_(True) for i in range(self.config['restarts'])]
             else:
                 self.ys = [torch.nn.functional.one_hot(labels, num_classes=1000).to(self.device) for i in range(self.config['restarts'])]
 
@@ -843,11 +843,8 @@ class GradientReconstructor():
                     # self.G_io = nn.DataParallel(self.G_io)
                     # self.G_io.to(self.device)
                 intermediate_out, new_ys = self.G_io(self.gen_outs[trial][-1], self.ys[trial].float(), 1)   if start_layer > 0 else self.G_io(dummy_z[trial], self.ys[trial].float(), 1)
-                self.gen_outs[trial].append(intermediate_out)   
-                if self.config['init_ys'] == 'optim' and start_layer == 0:
-                    self.ys[trial] = torch.nn.functional.one_hot(self.ys[trial].argmax(dim=1), num_classes=1000).detach().clone().to(self.device)
-                else:
-                    self.ys[trial] = new_ys
+                self.gen_outs[trial].append(intermediate_out)
+                self.ys[trial] = new_ys
                 self.G_io.end_layer = self.config['end_layer']
                 # self.G_io = nn.DataParallel(self.G_io)
             # if self.image_project:
