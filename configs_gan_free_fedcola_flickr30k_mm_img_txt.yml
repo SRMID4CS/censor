@@ -44,7 +44,7 @@ dataset : 'Flickr30k'   # ['Flickr30k', 'Flickr30k_img', 'Flickr30k_txt']
 data_path : 'N/A'  # specify your dataset path
 
 #For output data
-exp_name : 'ex1_FedCola_flickr30k_mm_img_txt'   #Same latent space search
+exp_name : 'ex1_FedCola_flickr30k_img_txt'   #Same latent space search
 output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
 
 #Choice for GAN-free methods

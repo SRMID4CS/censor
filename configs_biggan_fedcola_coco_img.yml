@@ -44,7 +44,7 @@
   data_path : 'N/A'  # specify your dataset path
 
   #For output data
-  exp_name : 'ex1_biggan_fedcola_img'   #Same latent space search
+  exp_name : 'ex1_biggan_fedcola_coco_img'   #Same latent space search
   output_dir : '/home/ubuntu/mnt-disk/results/censor-fedcola'
   #params for algorithm choice
   gifd : true

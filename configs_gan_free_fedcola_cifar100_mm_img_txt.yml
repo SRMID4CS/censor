@@ -42,7 +42,7 @@ dataset: 'CIFAR100_MM'   # CIFAR-100 with multimodal captions
 data_path: 'N/A'  # specify your dataset path
 
 #For output data
-exp_name: 'ex1_FedCola_cifar100_mm'   #CIFAR-100 multimodal experiment
+exp_name : 'ex1_FedCola_cifar100_img_txt'   #CIFAR-100 multimodal experiment
 output_dir: '/home/ubuntu/mnt-disk/results/censor-fedcola'
 
 #Choice for GAN-free methods
