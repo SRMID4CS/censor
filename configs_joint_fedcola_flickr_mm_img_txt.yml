@@ -43,7 +43,7 @@
 
   save_intermediate_at_img : 2000  # the interval at which to save intermediate results, -1 for no intermediate saving
   save_intermediate_at_txt : 100  # the interval at which to save intermediate results, -1 for no intermediate saving
-  stop_at_text_perf_match : True  # whether to stop optimization when text is perfectly matched
+  stop_at_text_perf_match : False  # whether to stop optimization when text is perfectly matched
 
   save_model : False  # whether to save the model or not
 
