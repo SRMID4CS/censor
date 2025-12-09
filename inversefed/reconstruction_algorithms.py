@@ -800,7 +800,7 @@ class GradientReconstructor():
 
             #log ys arg max index
             if start_layer == 0 and self.config['init_ys'] == 'optim':
-                logger.info(f"[start] ys arg max index of trial {trial}: {self.ys[trial].argmax(dim=1).detach().cpu().numpy()}")
+                logger.info(f"[start] ys arg max index of trial {trial}: {self.ys[trial].detach().clone().argmax(dim=1).cpu().numpy()}")
             for current_step in pbar:
                 # img_gen = self.generator(z, c.float(), 1)
                 lr = self.get_lr(current_step / steps, learning_rate)
@@ -846,7 +846,7 @@ class GradientReconstructor():
                 self.G_io.end_layer = start_layer + 1
                     # self.G_io = nn.DataParallel(self.G_io)
                     # self.G_io.to(self.device)
-                intermediate_out, new_ys = self.G_io(self.gen_outs[trial][-1], self.ys[trial].float(), 1)   if start_layer > 0 else self.G_io(dummy_z[trial], self.ys[trial].float(), 1)
+                intermediate_out, new_ys = self.G_io(self.gen_outs[trial][-1], ys_for_gen.float(), 1)   if start_layer > 0 else self.G_io(dummy_z[trial], ys_for_gen.float(), 1)
                 self.gen_outs[trial].append(intermediate_out)
                 ys_for_log = self.ys[trial].argmax(dim=1).detach().clone().cpu().numpy()
                 self.ys[trial] = new_ys
