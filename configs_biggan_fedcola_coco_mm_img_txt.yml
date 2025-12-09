@@ -9,6 +9,7 @@
   init_text : 'randn'     # how we initial the original latent code of text embedding.
   model : 'FedCola_IMG_TXT'   #FL model ['FedCola_IMG', 'FedCola_TXT', 'FedCola_IMG_TXT']
   restarts : 4
+  init_ys: 'optim' # [label, rand, optim]  # how to initialize the class probabilities ys for BigGAN
 
   num_images : 1   # the number of images to reconstruct at a batch
   num_exp : 1     # the number of experiments / inverted images
