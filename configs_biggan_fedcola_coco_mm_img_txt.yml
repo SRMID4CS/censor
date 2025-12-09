@@ -12,16 +12,16 @@
   init_ys: 'optim' # [label, rand, optim]  # how to initialize the class probabilities ys for BigGAN
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 1     # the number of experiments / inverted images
-  target_id : 100
-  target_id_increment : 1 # the incrementation of target image id
+  num_exp : 10     # the number of experiments / inverted images
+  target_id : 10
+  target_id_increment : 10 # the incrementation of target image id
   unrelated_target_offset : -1 # the offset for unrelated target
   lr : 0.03
   total_variation : 0.0001     #the coefficient of total variation
   bn_stat : 0       #choose if we use bn statistic to regularizer
   image_norm : 0.000001    #the coefficient of norm regularizer
   group_lazy : 0    #choose if we use group lazy regularization
-  ppatch_prior: 0.00001   #the coefficient of patch prior regularizer
+  patch_prior: 0.00001   #the coefficient of patch prior regularizer
   CLIP_loss : 0.01    #the coefficient of CLIP loss regularizer
 
   max_iterations : 2000   #Maximum number of iterations for latent reconstruction.

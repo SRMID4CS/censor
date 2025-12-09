@@ -11,9 +11,9 @@
   restarts : 4
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 1     # the number of experiments / inverted images
+  num_exp : 10     # the number of experiments / inverted images
   target_id : 10
-  target_id_increment : 1 # the incrementation of target image id
+  target_id_increment : 10 # the incrementation of target image id
   lr : 0.03
   total_variation : 0.0001     #the coefficient of total variation
   bn_stat : 0       #choose if we use bn statistic to regularizer

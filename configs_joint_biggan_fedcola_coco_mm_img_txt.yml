@@ -23,7 +23,7 @@
   init_ys: 'optim' # [label, rand, optim]  # how to initialize the class probabilities ys for BigGAN
 
   num_images : 1   # the number of images to reconstruct at a batch
-  num_exp : 1     # the number of experiments / inverted images
+  num_exp : 10     # the number of experiments / inverted images
   target_id : 10
   target_id_increment : 10 # the incrementation of target image id
   unrelated_target_offset : -1 # the offset for unrelated target
