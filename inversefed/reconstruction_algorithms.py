@@ -1859,9 +1859,13 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
             if start_layer == 0:
                 optim_param = [dummy_z[trial]]
+                if self.config['init_ys'] == 'optim':
+                    self.ys[trial].requires_grad = True
+                    optim_param.append(self.ys[trial])
                 ps = SphericalOptimizer([dummy_z[trial]])  #pgd
                 self.count_trainable_params(G=self.G_io, z=dummy_z[0])
             else:
+                self.ys[trial].requires_grad = False
                 self.gen_outs[trial][-1].requires_grad = True     
                 self.count_trainable_params(G=self.G_io, z=self.gen_outs[trial][-1])
                 optim_param =  [self.gen_outs[trial][-1]]
@@ -1901,13 +1905,23 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
             # c = torch.nn.functional.one_hot(self.labels, num_classes = self.fl_setting['num_classes']).to(self.input_gradient[0].device)
 
 
+            #log ys arg max index
+            if start_layer == 0 and self.config['init_ys'] == 'optim':
+                logger.info(f"[start] ys arg max index of trial {trial}: {self.ys[trial].detach().clone().argmax(dim=1).cpu().numpy()}")
+
             for current_step in pbar:
                 # img_gen = self.generator(z, c.float(), 1)
                 lr = self.get_lr(current_step / steps, learning_rate)
                 # optimizer = torch.optim.Adam([optim_param[0][select_idx]], lr=learning_rate)
                 optimizer.param_groups[0]['lr'] = lr
 
-                _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], ys=self.ys[trial], start_layer=start_layer) 
+                if start_layer == 0 and self.config['init_ys'] == 'optim':
+                    # make the ys a 1 -hot vector for generation
+                    ys_for_gen = torch.nn.functional.softmax(self.ys[trial], dim=-1).to(self.device)
+                else:
+                    ys_for_gen = self.ys[trial]
+
+                _x[trial] = self.gen_dummy_data(self.G_io, self.config['generative_model'], dummy_z[trial], gen_outs=self.gen_outs[trial], ys=ys_for_gen, start_layer=start_layer) 
                 losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                 text_losses = [0, 0, 0, 0, 0, 0, 0] # tv, bn, img_norm, group_lazy, KLD, patch, CLIP
                 optimizer.zero_grad()
@@ -1958,8 +1972,9 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 self.G_io.end_layer = start_layer + 1
                     # self.G_io = nn.DataParallel(self.G_io)
                     # self.G_io.to(self.device)
-                intermediate_out, new_ys = self.G_io(self.gen_outs[trial][-1], self.ys[trial].float(), 1)   if start_layer > 0 else self.G_io(dummy_z[trial], self.ys[trial].float(), 1)
-                self.gen_outs[trial].append(intermediate_out)   
+                intermediate_out, new_ys = self.G_io(self.gen_outs[trial][-1], ys_for_gen.float(), 1)   if start_layer > 0 else self.G_io(dummy_z[trial], ys_for_gen.float(), 1)
+                self.gen_outs[trial].append(intermediate_out)
+                ys_for_log = self.ys[trial].argmax(dim=1).detach().clone().cpu().numpy()
                 self.ys[trial] = new_ys
                 self.G_io.end_layer = self.config['end_layer']
                 # self.G_io = nn.DataParallel(self.G_io)
@@ -1969,6 +1984,10 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
                 # Project into image space
                 _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
                 _x[trial].data = torch.max(torch.min(_x[trial], (1 - dm) / ds), -dm / ds)
+
+            #log ys arg max index
+            if start_layer == 0 and self.config['init_ys'] == 'optim':
+                logger.info(f"[end] ys arg max index of trial {trial}: {ys_for_log}")
 
         return _x, labels
 
