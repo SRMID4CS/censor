@@ -42,6 +42,7 @@ imsize_dict = {
     'PERM64': 64, 'PERM32': 32, 'IMAGENET_IO' : 64, 'OOD_IMAGENET' : 64,
     'OOD_FFHQ' : 64,
     'Coco' : 224, 'Coco_img' : 224,
+    'Coco_txt' : 224, 'Flickr30k' : 224, 'Flickr30k_img' : 224, 'Flickr30k_txt' : 224,
 }
 
 save_interval=100
