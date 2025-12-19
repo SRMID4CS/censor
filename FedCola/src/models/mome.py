@@ -25,6 +25,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import gc
+import torchvision
 
 from timm.layers import PatchEmbed, Mlp, DropPath, AttentionPoolLatent, RmsNorm, PatchDropout, SwiGLUPacked, \
     trunc_normal_, lecun_normal_, resample_patch_embed, resample_abs_pos_embed, use_fused_attn, \
@@ -575,6 +576,107 @@ class Embedding(nn.Module):
     def forward(self):
         raise NotImplementedError
 
+class ResNetEmbedding(Embedding):
+    """ResNet-based image embedding using torchvision ResNet, matching ViT interface"""
+    
+    def __init__(self, img_size, in_chans, embed_dim, drop_rate, 
+                 resnet_type='resnet18', freeze_resnet=False, pretrained=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Load pretrained ResNet or create new one
+        if resnet_type == 'resnet18':
+            backbone = torchvision.models.resnet18(pretrained=pretrained)
+        elif resnet_type == 'resnet34':
+            backbone = torchvision.models.resnet34(pretrained=pretrained)
+        elif resnet_type == 'resnet50':
+            backbone = torchvision.models.resnet50(pretrained=pretrained)
+        else:
+            raise ValueError(f"Unsupported resnet_type: {resnet_type}")
+        
+        # Remove the final FC layer and avgpool
+        self.conv1 = backbone.conv1
+        self.bn1 = backbone.bn1
+        self.relu = backbone.relu
+        self.maxpool = backbone.maxpool
+        self.layer1 = backbone.layer1
+        self.layer2 = backbone.layer2
+        self.layer3 = backbone.layer3
+        self.layer4 = backbone.layer4
+        
+        # Calculate spatial size after ResNet layers
+        # Input: 224x224
+        # After conv1 (stride=2) + maxpool (stride=2): 56x56
+        # After layer2 (stride=2): 28x28
+        # After layer3 (stride=2): 14x14
+        # After layer4 (stride=2): 7x7
+        self.feature_size = 7
+        self.num_patches = self.feature_size * self.feature_size  # 49
+        
+        # Get output channels from layer4
+        if resnet_type in ['resnet18', 'resnet34']:
+            final_channels = 512
+        else:
+            final_channels = 2048
+        
+        # Project ResNet features to embed_dim
+        self.projection = nn.Linear(final_channels, embed_dim)
+        
+        self.modality = 'img'
+        
+        # Positional embeddings (num_patches + 1 for cls token)
+        self.pos_embed = nn.Parameter(torch.zeros(1, self.num_patches + 1, embed_dim))
+        self.pos_drop = nn.Dropout(p=drop_rate)
+        
+        # Class token
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        
+        # Initialize
+        trunc_normal_(self.pos_embed, std=0.02)
+        trunc_normal_(self.cls_token, std=0.02)
+        nn.init.normal_(self.projection.weight, std=0.01)
+        if self.projection.bias is not None:
+            nn.init.constant_(self.projection.bias, 0)
+        
+        # Freeze ResNet layers and embeddings if specified
+        if freeze_resnet:
+            for param in [self.conv1, self.bn1, self.layer1, self.layer2, 
+                         self.layer3, self.layer4]:
+                for p in param.parameters():
+                    p.requires_grad = False
+            self.pos_embed.requires_grad = False
+            self.cls_token.requires_grad = False
+    
+    def forward(self, _x):
+        # Forward pass through ResNet layers
+        x = self.conv1(_x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)  # (B, 512 or 2048, 7, 7)
+        
+        # Reshape to (B, num_patches, channels)
+        B, C, H, W = x.shape
+        x = x.permute(0, 2, 3, 1).reshape(B, H * W, C)  # (B, 49, 512/2048)
+        
+        # Project to embed_dim
+        x = self.projection(x)  # (B, 49, embed_dim)
+        
+        # Add cls token
+        cls_tokens = self.cls_token.expand(B, -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)  # (B, 50, embed_dim)
+        
+        # Add positional embeddings
+        x = x + self.pos_embed.to(x.device)
+        x = self.pos_drop(x)
+        
+        return x
+
+
+
 class ImageEmbedding(Embedding):
     def __init__(self, img_size, patch_size, in_chans, embed_dim, drop_rate, freeze_patch_embeddings=False, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -737,12 +839,36 @@ class ModalityAgnosticTransformer(nn.Module):
 
         # Embedding
         self.embeddings = []
-        # self.modalities = []
-
+        self.use_resnet = kwargs.get('use_resnet', False)
+        self.resnet_type = kwargs.get('resnet_type', 'resnet18')
+        self.pretrained = kwargs.get('pretrained', False)
+        
         self.modalities = modalities
         for modality in modalities:
             if modality == 'img':
-                self.embeddings.append(ImageEmbedding(img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim, drop_rate=drop_rate, freeze_patch_embeddings=freeze_patch_embeddings))
+                if self.use_resnet:
+                    self.embeddings.append(
+                        ResNetEmbedding(
+                            img_size=img_size, 
+                            in_chans=in_chans, 
+                            embed_dim=embed_dim, 
+                            drop_rate=drop_rate, 
+                            resnet_type=self.resnet_type,
+                            freeze_resnet=freeze_patch_embeddings,
+                            pretrained=self.pretrained
+                        )
+                    )
+                else:
+                    self.embeddings.append(
+                        ImageEmbedding(
+                            img_size=img_size, 
+                            patch_size=patch_size, 
+                            in_chans=in_chans, 
+                            embed_dim=embed_dim, 
+                            drop_rate=drop_rate, 
+                            freeze_patch_embeddings=freeze_patch_embeddings
+                        )
+                    )
             elif modality == 'txt':
                 self.embeddings.append(TextEmbedding(vocab_size=vocab_size, num_features=embed_dim, max_text_len=max_text_len, drop_path_rate=drop_rate, freeze_bert_embeddings=freeze_bert_embeddings))
             elif modality is None:
@@ -1130,7 +1256,90 @@ def mome_small_patch32(pretrained, args, **kwargs):
     model.sync_shared_weights()
     if pretrained:
         model.pretrain_vit(['vit_small_patch32_224', None])
-    return model 
+    return model
+
+@register_model
+def mome_resnet18_small(pretrained, args, **kwargs):
+    """ResNet-18 backbone with ViT-small head (embed_dim=384)"""
+    kwargs['use_resnet'] = True
+    kwargs['resnet_type'] = 'resnet18'
+    kwargs['pretrained'] = pretrained
+    
+    model = ModalityAgnosticTransformer(
+        img_size=224,
+        patch_size=16,  # Not used but kept for compatibility
+        embed_dim=384,
+        depth=12,
+        num_heads=6,
+        vocab_size=args.vocab_size, 
+        max_text_len=args.seq_len,
+        drop_path_rate=args.dropout,
+        shared_param=args.shared_param,
+        share_scope=args.share_scope,
+        colearn_param=args.colearn_param,
+        freeze_bert_embeddings=args.freeze_bert_embeddings,
+        freeze_patch_embeddings=getattr(args, 'freeze_resnet', False),
+        **kwargs
+    )
+    model.sync_shared_weights()
+    
+    if pretrained:
+        print("INFO: Using pretrained ResNet-18 backbone for ResNet variant")
+    else:
+        print("INFO: Using random initialization for ResNet variant")
+    
+    return model
+
+
+@register_model
+def mome_resnet34_small(pretrained, args, **kwargs):
+    """ResNet-34 backbone with ViT-small head (embed_dim=384)"""
+    kwargs['use_resnet'] = True
+    kwargs['resnet_type'] = 'resnet34'
+    kwargs['pretrained'] = pretrained
+    
+    model = ModalityAgnosticTransformer(
+        img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
+        vocab_size=args.vocab_size, max_text_len=args.seq_len,
+        drop_path_rate=args.dropout, shared_param=args.shared_param,
+        share_scope=args.share_scope, colearn_param=args.colearn_param,
+        freeze_bert_embeddings=args.freeze_bert_embeddings,
+        freeze_patch_embeddings=getattr(args, 'freeze_resnet', False),
+        **kwargs
+    )
+    model.sync_shared_weights()
+
+    if pretrained:
+        print("INFO: Using pretrained ResNet-34 backbone for ResNet variant")
+    else:
+        print("INFO: Using random initialization for ResNet variant")
+
+    return model
+
+
+@register_model  
+def mome_resnet50_small(pretrained, args, **kwargs):
+    """ResNet-50 backbone with ViT-small head (embed_dim=384)"""
+    kwargs['use_resnet'] = True
+    kwargs['resnet_type'] = 'resnet50'
+    
+    model = ModalityAgnosticTransformer(
+        img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
+        vocab_size=args.vocab_size, max_text_len=args.seq_len,
+        drop_path_rate=args.dropout, shared_param=args.shared_param,
+        share_scope=args.share_scope, colearn_param=args.colearn_param,
+        freeze_bert_embeddings=args.freeze_bert_embeddings,
+        freeze_patch_embeddings=getattr(args, 'freeze_resnet', False),
+        **kwargs
+    )
+    model.sync_shared_weights()
+
+    if pretrained:
+        print("INFO: Using pretrained ResNet-50 backbone for ResNet variant")
+    else:
+        print("INFO: Using random initialization for ResNet variant")
+
+    return model
 
 
 
