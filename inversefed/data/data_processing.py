@@ -238,6 +238,8 @@ def _build_cifar100(data_path, augmentations=True, normalize=True):
 
     # Organize preprocessing
     transform = transforms.Compose([
+        transforms.Resize(resize_dict['CIFAR100_MM']),
+        transforms.CenterCrop(centercrop_dict['CIFAR100_MM']),
         transforms.ToTensor(),
         transforms.Normalize(data_mean, data_std) if normalize else transforms.Lambda(lambda x: x)])
     if augmentations:
