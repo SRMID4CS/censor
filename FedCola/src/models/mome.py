@@ -576,6 +576,101 @@ class Embedding(nn.Module):
     def forward(self):
         raise NotImplementedError
 
+
+class FullResNetBackbone(nn.Module):
+    """Complete ResNet that replaces entire ViT pipeline (embedding + transformer blocks)"""
+    
+    def __init__(self, img_size, in_chans, embed_dim, resnet_type='resnet18', 
+                 pretrained=False, freeze_resnet=False, use_global_pool=True):
+        super().__init__()
+        
+        # Load pretrained ResNet or create new one
+        if resnet_type == 'resnet18':
+            backbone = torchvision.models.resnet18(pretrained=pretrained)
+        elif resnet_type == 'resnet34':
+            backbone = torchvision.models.resnet34(pretrained=pretrained)
+        elif resnet_type == 'resnet50':
+            backbone = torchvision.models.resnet50(pretrained=pretrained)
+        elif resnet_type == 'resnet101':
+            backbone = torchvision.models.resnet101(pretrained=pretrained)
+        elif resnet_type == 'resnet152':
+            backbone = torchvision.models.resnet152(pretrained=pretrained)
+        else:
+            raise ValueError(f"Unsupported resnet_type: {resnet_type}")
+        
+        # Extract ResNet layers (without final FC)
+        self.conv1 = backbone.conv1
+        self.bn1 = backbone.bn1
+        self.relu = backbone.relu
+        self.maxpool = backbone.maxpool
+        self.layer1 = backbone.layer1
+        self.layer2 = backbone.layer2
+        self.layer3 = backbone.layer3
+        self.layer4 = backbone.layer4
+        
+        # Get output channels
+        if resnet_type in ['resnet18', 'resnet34']:
+            final_channels = 512
+        else:  # resnet50, resnet101, resnet152
+            final_channels = 2048
+        
+        self.use_global_pool = use_global_pool
+        self.modality = 'img'
+        
+        if use_global_pool:
+            self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        
+        # Project to embed_dim to match task head expectations
+        self.projection = nn.Linear(final_channels, embed_dim)
+        
+        # Initialize projection
+        nn.init.normal_(self.projection.weight, std=0.01)
+        if self.projection.bias is not None:
+            nn.init.constant_(self.projection.bias, 0)
+        
+        # Freeze if specified
+        if freeze_resnet:
+            for param in [self.conv1, self.bn1, self.layer1, self.layer2,
+                         self.layer3, self.layer4]:
+                for p in param.parameters():
+                    p.requires_grad = False
+    
+    def forward(self, x):
+        # Forward through ResNet
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)  # (B, 512/2048, 7, 7)
+        
+        if self.use_global_pool:
+            x = self.avgpool(x)  # (B, 512/2048, 1, 1)
+            x = x.flatten(1)     # (B, 512/2048)
+        else:
+            # Keep spatial dimensions
+            B, C, H, W = x.shape
+            x = x.permute(0, 2, 3, 1).reshape(B, H * W, C)  # (B, 49, 512/2048)
+        
+        # Project to embed_dim
+        x = self.projection(x)  # (B, embed_dim) or (B, 49, embed_dim)
+        
+        # Add fake CLS token dimension for compatibility with task heads
+        # Task heads expect (B, seq_len, embed_dim) and use [:, 0]
+        if self.use_global_pool:
+            x = x.unsqueeze(1)  # (B, 1, embed_dim) - single "CLS" token
+        else:
+            # Add CLS token at position 0
+            B = x.shape[0]
+            cls_token = x.mean(dim=1, keepdim=True)  # Use mean as CLS
+            x = torch.cat([cls_token, x], dim=1)  # (B, 50, embed_dim)
+        
+        return x
+
+
 class ResNetEmbedding(Embedding):
     """ResNet-based image embedding using torchvision ResNet, matching ViT interface"""
     
@@ -622,16 +717,19 @@ class ResNetEmbedding(Embedding):
         self.projection = nn.Linear(final_channels, embed_dim)
         
         self.modality = 'img'
+        self.use_pos_embed = kwargs.get('use_pos_embed', True)
         
-        # Positional embeddings (num_patches + 1 for cls token)
-        self.pos_embed = nn.Parameter(torch.zeros(1, self.num_patches + 1, embed_dim))
+        # Positional embeddings (num_patches + 1 for cls token) - optional
+        if self.use_pos_embed:
+            self.pos_embed = nn.Parameter(torch.zeros(1, self.num_patches + 1, embed_dim))
+            trunc_normal_(self.pos_embed, std=0.02)
+        else:
+            self.pos_embed = None
+        
         self.pos_drop = nn.Dropout(p=drop_rate)
         
         # Class token
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        
-        # Initialize
-        trunc_normal_(self.pos_embed, std=0.02)
         trunc_normal_(self.cls_token, std=0.02)
         nn.init.normal_(self.projection.weight, std=0.01)
         if self.projection.bias is not None:
@@ -643,7 +741,8 @@ class ResNetEmbedding(Embedding):
                          self.layer3, self.layer4]:
                 for p in param.parameters():
                     p.requires_grad = False
-            self.pos_embed.requires_grad = False
+            if self.pos_embed is not None:
+                self.pos_embed.requires_grad = False
             self.cls_token.requires_grad = False
     
     def forward(self, _x):
@@ -669,8 +768,10 @@ class ResNetEmbedding(Embedding):
         cls_tokens = self.cls_token.expand(B, -1, -1)
         x = torch.cat((cls_tokens, x), dim=1)  # (B, 50, embed_dim)
         
-        # Add positional embeddings
-        x = x + self.pos_embed.to(x.device)
+        # Add positional embeddings only if enabled
+        if self.use_pos_embed and self.pos_embed is not None:
+            x = x + self.pos_embed.to(x.device)
+        
         x = self.pos_drop(x)
         
         return x
@@ -840,13 +941,29 @@ class ModalityAgnosticTransformer(nn.Module):
         # Embedding
         self.embeddings = []
         self.use_resnet = kwargs.get('use_resnet', False)
+        self.full_resnet = kwargs.get('full_resnet', False)  # Full ResNet mode bypasses transformers
         self.resnet_type = kwargs.get('resnet_type', 'resnet18')
         self.pretrained = kwargs.get('pretrained', False)
+        self.use_pos_embed = kwargs.get('use_pos_embed', True)
         
         self.modalities = modalities
         for modality in modalities:
             if modality == 'img':
-                if self.use_resnet:
+                if self.full_resnet:
+                    # Full ResNet mode - no transformer blocks needed for images
+                    self.embeddings.append(
+                        FullResNetBackbone(
+                            img_size=img_size,
+                            in_chans=in_chans,
+                            embed_dim=embed_dim,
+                            resnet_type=self.resnet_type,
+                            pretrained=self.pretrained,
+                            freeze_resnet=freeze_patch_embeddings,
+                            use_global_pool=True
+                        )
+                    )
+                elif self.use_resnet:
+                    # Hybrid mode - ResNet embedding + transformer blocks
                     self.embeddings.append(
                         ResNetEmbedding(
                             img_size=img_size, 
@@ -855,10 +972,12 @@ class ModalityAgnosticTransformer(nn.Module):
                             drop_rate=drop_rate, 
                             resnet_type=self.resnet_type,
                             freeze_resnet=freeze_patch_embeddings,
-                            pretrained=self.pretrained
+                            pretrained=self.pretrained,
+                            use_pos_embed=self.use_pos_embed
                         )
                     )
                 else:
+                    # Standard ViT mode
                     self.embeddings.append(
                         ImageEmbedding(
                             img_size=img_size, 
@@ -1041,17 +1160,30 @@ class ModalityAgnosticTransformer(nn.Module):
         # embeds = torch.zeros(x[0].shape[0], 0, self.embed_dim).to(x[0].device)
 
         embeds = []
+        
+        # Phase 1: Embeddings (with full ResNet early exit)
         for i, modality in enumerate(self.modalities):
             if modality is None:
                 assert x[i] is None, 'None modality should have None input.'
                 embeds.append(None)
+                outs.append(None)  # ✓ Mark as already processed
                 continue
+                
             if modality == 'img' and len(x[i].shape)==4 and x[i].shape[1]==1:
                 x[i] = x[i].repeat(1,3,1,1)
 
-            # Add support for inputs_embeds for text modality to skip if embedding is already computed
+            # Full ResNet mode: skip transformers entirely
+            if self.full_resnet and modality == 'img':
+                x_emb = self.embeddings[i](x[i])
+                x_emb = self.norm(x_emb)
+                embeds.append(None)  # ✓ Mark as not needing transformer processing
+                outs.append(x_emb)    # ✓ Already final output
+                continue
+
+            # Standard embedding for hybrid/ViT modes
             if modality == 'img':
                 embeds.append(self.embeddings[i](x[i]))
+                outs.append(None)  # Will be computed later
             elif modality == 'txt':
                 # If inputs_embeds is provided, use it directly
                 if x[i] is not None and isinstance(x[i], torch.Tensor) and x[i].dim() == 3:
@@ -1062,30 +1194,34 @@ class ModalityAgnosticTransformer(nn.Module):
                     embeds.append(self.embeddings[i](input_ids=x[i], inputs_embeds=None))
                 else:
                     raise ValueError("[Incorrect Dim] For text modality, input must be either inputs_embeds or input_ids.")
+                outs.append(None)  # Will be computed later
 
-        # print(embeds[0].shape, embeds[1].shape)
-
+        # Phase 2: Transformer blocks (skip if already processed)
         feats = [None for _ in range(len(self.modalities))]
-
         for i, modality in enumerate(self.modalities):
-            if modality is None:
+            if modality is None or embeds[i] is None:  # ✓ Skip if no embedding (full_resnet case)
                 continue
             features = self.blockses[i](embeds[i])
             features = self.norm(features)
             feats[i] = features
 
-        outs = [None for _ in range(len(self.modalities))]
-
+        # Phase 3: Task heads (use feats or pre-computed outs)
         if feat_out:
             for i, modality in enumerate(self.modalities):
                 if modality is None:
+                    continue
+                if outs[i] is not None:  # ✓ Already computed (full_resnet)
                     continue
                 outs[i] = feats[i][:, 0] / feats[i][:, 0].norm(dim=-1, keepdim=True)
         else:
             for i, modality in enumerate(self.modalities):
                 if modality is None:
                     continue
-                outs[i] = self.heads[i](feats[i])
+                if outs[i] is not None:  # ✓ Already computed (full_resnet)
+                    # Need to pass through task head
+                    outs[i] = self.heads[i](outs[i])
+                else:
+                    outs[i] = self.heads[i](feats[i])
 
         return outs
 
@@ -1321,9 +1457,15 @@ def mome_resnet34_small(pretrained, args, **kwargs):
 def mome_resnet50_small(pretrained, args, **kwargs):
     """ResNet-50 backbone with ViT-small head (embed_dim=384)"""
     kwargs['use_resnet'] = True
+    kwargs['full_resnet'] = False
     kwargs['resnet_type'] = 'resnet50'
+    kwargs['pretrained'] = pretrained
+    kwargs['use_pos_embed'] = True
     
     model = ModalityAgnosticTransformer(
+        modalities=args.modalities,
+        num_classes=args.num_classes,
+        tasks=args.tasks,
         img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
         vocab_size=args.vocab_size, max_text_len=args.seq_len,
         drop_path_rate=args.dropout, shared_param=args.shared_param,
@@ -1335,10 +1477,116 @@ def mome_resnet50_small(pretrained, args, **kwargs):
     model.sync_shared_weights()
 
     if pretrained:
-        print("INFO: Using pretrained ResNet-50 backbone for ResNet variant")
+        print("INFO: Using pretrained ResNet-50 backbone for hybrid ResNet variant")
     else:
-        print("INFO: Using random initialization for ResNet variant")
+        print("INFO: Using random initialization for hybrid ResNet variant")
 
+    return model
+
+
+@register_model
+def mome_resnet18_small_nopos(pretrained, args, **kwargs):
+    """Hybrid: ResNet-18 embedding + transformer blocks (NO pos embeddings)"""
+    kwargs['use_resnet'] = True
+    kwargs['full_resnet'] = False
+    kwargs['resnet_type'] = 'resnet18'
+    kwargs['pretrained'] = pretrained
+    kwargs['use_pos_embed'] = False
+    
+    model = ModalityAgnosticTransformer(
+        modalities=args.modalities,
+        num_classes=args.num_classes,
+        tasks=args.tasks,
+        img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
+        vocab_size=args.vocab_size, max_text_len=args.seq_len,
+        drop_path_rate=args.dropout, shared_param=args.shared_param,
+        share_scope=args.share_scope, colearn_param=args.colearn_param,
+        freeze_bert_embeddings=args.freeze_bert_embeddings,
+        freeze_patch_embeddings=getattr(args, 'freeze_resnet', False),
+        **kwargs
+    )
+    model.sync_shared_weights()
+    print("INFO: Hybrid ResNet-18 WITHOUT positional embeddings")
+    return model
+
+
+@register_model
+def mome_resnet18_full(pretrained, args, **kwargs):
+    """Full: ResNet-18 end-to-end (NO transformer blocks for images)"""
+    kwargs['use_resnet'] = False
+    kwargs['full_resnet'] = True
+    kwargs['resnet_type'] = 'resnet18'
+    kwargs['pretrained'] = pretrained
+    
+    model = ModalityAgnosticTransformer(
+        modalities=args.modalities,
+        num_classes=args.num_classes,
+        tasks=args.tasks,
+        img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
+        vocab_size=args.vocab_size, max_text_len=args.seq_len,
+        drop_path_rate=args.dropout, shared_param=args.shared_param,
+        share_scope=args.share_scope, colearn_param=args.colearn_param,
+        freeze_bert_embeddings=args.freeze_bert_embeddings,
+        freeze_patch_embeddings=getattr(args, 'freeze_resnet', False),
+        **kwargs
+    )
+    model.sync_shared_weights()
+    if pretrained:
+        print("INFO: Using ImageNet pretrained ResNet-18 backbone (FULL mode - no transformers)")
+    else:
+        print("INFO: Using random initialization for full ResNet-18")
+    return model
+
+
+@register_model
+def mome_resnet34_full(pretrained, args, **kwargs):
+    """Full: ResNet-34 end-to-end (NO transformer blocks for images)"""
+    kwargs['use_resnet'] = False
+    kwargs['full_resnet'] = True
+    kwargs['resnet_type'] = 'resnet34'
+    kwargs['pretrained'] = pretrained
+    
+    model = ModalityAgnosticTransformer(
+        modalities=args.modalities,
+        num_classes=args.num_classes,
+        tasks=args.tasks,
+        img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
+        vocab_size=args.vocab_size, max_text_len=args.seq_len,
+        drop_path_rate=args.dropout, shared_param=args.shared_param,
+        share_scope=args.share_scope, colearn_param=args.colearn_param,
+        freeze_bert_embeddings=args.freeze_bert_embeddings,
+        freeze_patch_embeddings=getattr(args, 'freeze_resnet', False),
+        **kwargs
+    )
+    model.sync_shared_weights()
+    if pretrained:
+        print("INFO: Using ImageNet pretrained ResNet-34 backbone (FULL mode)")
+    return model
+
+
+@register_model
+def mome_resnet50_full(pretrained, args, **kwargs):
+    """Full: ResNet-50 end-to-end (NO transformer blocks for images)"""
+    kwargs['use_resnet'] = False
+    kwargs['full_resnet'] = True
+    kwargs['resnet_type'] = 'resnet50'
+    kwargs['pretrained'] = pretrained
+    
+    model = ModalityAgnosticTransformer(
+        modalities=args.modalities,
+        num_classes=args.num_classes,
+        tasks=args.tasks,
+        img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
+        vocab_size=args.vocab_size, max_text_len=args.seq_len,
+        drop_path_rate=args.dropout, shared_param=args.shared_param,
+        share_scope=args.share_scope, colearn_param=args.colearn_param,
+        freeze_bert_embeddings=args.freeze_bert_embeddings,
+        freeze_patch_embeddings=getattr(args, 'freeze_resnet', False),
+        **kwargs
+    )
+    model.sync_shared_weights()
+    if pretrained:
+        print("INFO: Using ImageNet pretrained ResNet-50 backbone (FULL mode)")
     return model
 
 
