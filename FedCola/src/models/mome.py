@@ -1176,11 +1176,11 @@ class ModalityAgnosticTransformer(nn.Module):
             if self.full_resnet and modality == 'img':
                 x_emb = self.embeddings[i](x[i])
                 x_emb = self.norm(x_emb)
-                embeds.append(None)  # ✓ Mark as not needing transformer processing
-                outs.append(x_emb)    # ✓ Already final output
+                embeds.append(None)  # Mark as not needing transformer
+                outs.append(x_emb)   # Store normed features
                 continue
 
-            # Standard embedding for hybrid/ViT modes
+            # Standard embedding
             if modality == 'img':
                 embeds.append(self.embeddings[i](x[i]))
                 outs.append(None)  # Will be computed later
@@ -1196,7 +1196,7 @@ class ModalityAgnosticTransformer(nn.Module):
                     raise ValueError("[Incorrect Dim] For text modality, input must be either inputs_embeds or input_ids.")
                 outs.append(None)  # Will be computed later
 
-        # Phase 2: Transformer blocks (skip if already processed)
+        # Transformer blocks (skip if embeds[i] is None)
         feats = [None for _ in range(len(self.modalities))]
         for i, modality in enumerate(self.modalities):
             if modality is None or embeds[i] is None:  # ✓ Skip if no embedding (full_resnet case)
@@ -1205,25 +1205,22 @@ class ModalityAgnosticTransformer(nn.Module):
             features = self.norm(features)
             feats[i] = features
 
-        # Phase 3: Task heads (use feats or pre-computed outs)
-        if feat_out:
-            for i, modality in enumerate(self.modalities):
-                if modality is None:
-                    continue
-                if outs[i] is not None:  # ✓ Already computed (full_resnet)
-                    continue
-                outs[i] = feats[i][:, 0] / feats[i][:, 0].norm(dim=-1, keepdim=True)
-        else:
-            for i, modality in enumerate(self.modalities):
-                if modality is None:
-                    continue
-                if outs[i] is not None:  # ✓ Already computed (full_resnet)
-                    # Need to pass through task head
-                    outs[i] = self.heads[i](outs[i])
-                else:
-                    outs[i] = self.heads[i](feats[i])
+        # Output processing
+        final_outs = [None for _ in range(len(self.modalities))]
+        
+        for i, modality in enumerate(self.modalities):
+            if modality is None:
+                continue
+                
+            # Use pre-computed features from full ResNet or transformer features
+            features_to_use = outs[i] if outs[i] is not None else feats[i]
+            
+            if feat_out:
+                final_outs[i] = features_to_use[:, 0] / features_to_use[:, 0].norm(dim=-1, keepdim=True)
+            else:
+                final_outs[i] = self.heads[i](features_to_use)
 
-        return outs
+        return final_outs
 
 @register_model
 def mome_small_patch16(pretrained, args, **kwargs):
@@ -1463,9 +1460,6 @@ def mome_resnet50_small(pretrained, args, **kwargs):
     kwargs['use_pos_embed'] = True
     
     model = ModalityAgnosticTransformer(
-        modalities=args.modalities,
-        num_classes=args.num_classes,
-        tasks=args.tasks,
         img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
         vocab_size=args.vocab_size, max_text_len=args.seq_len,
         drop_path_rate=args.dropout, shared_param=args.shared_param,
@@ -1494,9 +1488,6 @@ def mome_resnet18_small_nopos(pretrained, args, **kwargs):
     kwargs['use_pos_embed'] = False
     
     model = ModalityAgnosticTransformer(
-        modalities=args.modalities,
-        num_classes=args.num_classes,
-        tasks=args.tasks,
         img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
         vocab_size=args.vocab_size, max_text_len=args.seq_len,
         drop_path_rate=args.dropout, shared_param=args.shared_param,
@@ -1519,9 +1510,6 @@ def mome_resnet18_full(pretrained, args, **kwargs):
     kwargs['pretrained'] = pretrained
     
     model = ModalityAgnosticTransformer(
-        modalities=args.modalities,
-        num_classes=args.num_classes,
-        tasks=args.tasks,
         img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
         vocab_size=args.vocab_size, max_text_len=args.seq_len,
         drop_path_rate=args.dropout, shared_param=args.shared_param,
@@ -1547,9 +1535,6 @@ def mome_resnet34_full(pretrained, args, **kwargs):
     kwargs['pretrained'] = pretrained
     
     model = ModalityAgnosticTransformer(
-        modalities=args.modalities,
-        num_classes=args.num_classes,
-        tasks=args.tasks,
         img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
         vocab_size=args.vocab_size, max_text_len=args.seq_len,
         drop_path_rate=args.dropout, shared_param=args.shared_param,
@@ -1573,9 +1558,6 @@ def mome_resnet50_full(pretrained, args, **kwargs):
     kwargs['pretrained'] = pretrained
     
     model = ModalityAgnosticTransformer(
-        modalities=args.modalities,
-        num_classes=args.num_classes,
-        tasks=args.tasks,
         img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6,
         vocab_size=args.vocab_size, max_text_len=args.seq_len,
         drop_path_rate=args.dropout, shared_param=args.shared_param,
