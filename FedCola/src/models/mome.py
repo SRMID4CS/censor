@@ -675,7 +675,7 @@ class ResNetEmbedding(Embedding):
     """ResNet-based image embedding using torchvision ResNet, matching ViT interface"""
     
     def __init__(self, img_size, in_chans, embed_dim, drop_rate, 
-                 resnet_type='resnet18', freeze_resnet=False, pretrained=False, *args, **kwargs):
+                 resnet_type='resnet18', freeze_resnet=False, pretrained=False, use_pos_embed=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         # Load pretrained ResNet or create new one
