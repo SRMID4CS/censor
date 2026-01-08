@@ -812,6 +812,9 @@ if __name__ == "__main__":
             elif config['model'] == 'FedCola_TXT':
                 modality = 'txt'
             model.load_state_dict(torch.load(os.path.join(model_load_dir, f"epoch_{epoch}", f"model_epoch_{modality}_{epoch}.pt")))
+        # skip training the model
+        elif config['skip_model_training']:
+            logger.info("Skipping model training as per configuration.")
         else:
             # simulate FL training, train the model with more instances, then evaluate the model
             model.train()

@@ -47,6 +47,7 @@
   stop_at_text_perf_match : False  # whether to stop optimization when text is perfectly matched
 
   save_model : False  # whether to save the model or not
+  skip_model_training : True  # whether to skip model training
 
   gias_lr : 0.00001   #For biggan, we'd better choose smaller learning rate. 
 

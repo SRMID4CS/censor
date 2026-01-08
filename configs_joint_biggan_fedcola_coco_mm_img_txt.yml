@@ -42,6 +42,7 @@
   use_saved_models : False  # whether to use saved models or not
   model_load_dir : '/home/ubuntu/mnt-disk/results/fedcola/exp_name'  # the directory to load saved models from
   save_model : False  # whether to save the model or not
+  skip_model_training : True  # whether to skip model training
 
   save_intermediate_at_img : 2000  # the interval at which to save intermediate results, -1 for no intermediate saving
   save_intermediate_at_txt : 100  # the interval at which to save intermediate results, -1 for no intermediate saving
