@@ -530,10 +530,13 @@ if __name__ == "__main__":
                     target_loss = loss_fn(*outputs_for_rec, torch.tensor([1.0]).to(**setup))
                 else:
                     target_loss, _, _ = loss_fn(outputs_for_rec, labels)
-                input_gradient = torch.autograd.grad(target_loss, model.parameters())
+                input_gradient = torch.autograd.grad(target_loss, model.parameters(), allow_unused=True)
+                
+                # Replace None gradients with zero tensors (from unused parameters in full_resnet mode)
+                input_gradient = [g if g is not None else torch.zeros_like(p) for g, p in zip(input_gradient, model.parameters())]
 
                 # compute the input_gradient norm
-                input_gradient_norm = torch.norm(torch.cat([g.view(-1) for g in input_gradient]), p=2)
+                input_gradient_norm = torch.norm(torch.cat([g.view(-1) for g in input_gradient if not g.eq(0).all()]), p=2)
                 # move the input_gradient norm to the cpu
                 input_gradient_tmp = input_gradient_norm.cpu().detach().numpy()
 
