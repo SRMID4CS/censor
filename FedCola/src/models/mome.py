@@ -959,7 +959,7 @@ class ModalityAgnosticTransformer(nn.Module):
                             resnet_type=self.resnet_type,
                             pretrained=self.pretrained,
                             freeze_resnet=freeze_patch_embeddings,
-                            use_global_pool=True
+                            use_global_pool=False
                         )
                     )
                 elif self.use_resnet:
