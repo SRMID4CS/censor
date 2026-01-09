@@ -13,9 +13,9 @@ root='/home/ubuntu/mnt-disk/repos/censor/data/' # root path of the dataset
 
 # Use ResNet-18 in FULL mode (no transformer blocks for images)
 python run_joint_mm_rec.py \
-    --config configs_joint_fedcola_coco_mm_img_txt.yml \
+    --config configs_joint_biggan_fedcola_cifar100_mm_img_txt.yml \
     --data_path $root \
-    --exp_name FedCola_Joint_Coco_MM_ResNet50_Full \
+    --exp_name FedCola_Joint_BigGAN_CIFAR100_MM_ResNet50_Full \
     --shared_param attn \
     --share_scope modality \
     --colearn_param none \
@@ -53,4 +53,4 @@ python run_joint_mm_rec.py \
     --eval_batch_size 512 \
     --reduce_samples 1000 \
     --dropout 0.0 \
-    --seq_len 20
+    --seq_len 10
