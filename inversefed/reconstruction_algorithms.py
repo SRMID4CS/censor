@@ -1,7 +1,7 @@
 """Mechanisms for image reconstruction from parameter gradients."""
 import os
 
-from inversefed.indices_fedcola import select_indices_fedcola
+from inversefed.indices_fedcola import select_indices_fedcola, print_indices_summary
 import torch
 import torchvision
 import torch.nn as nn
@@ -1746,6 +1746,13 @@ class MultimodalJointGradientReconstructor(GradientReconstructor):
 
         self.img_shape = img_shape
         self.txt_shape = txt_shape
+        
+        # Print gradient indices configuration for debugging
+        print_indices_summary(
+            self.model, 
+            img_indices=self.config.get('img_indices', 'def'),
+            txt_indices=self.config.get('txt_indices', 'def')
+        )
 
         self.images = self._init_images(img_shape)
         self.text_embeds = self._init_text_embeds(txt_shape)
