@@ -1638,20 +1638,13 @@ class GradientReconstructor():
                     
                     rec_loss += lambda_cross * clip_confidence_loss
                     
-                    # Log confidence metrics
-                    if iteration % 100 == 0:  # Log every 100 iterations
-                        logger.info(f"Confidence - Img: {self.confidence_img:.4f}, Txt: {self.confidence_txt:.4f}, "
-                                  f"Global: {global_confidence:.4f}, Lambda: {lambda_cross:.4f}")
-                    
                     # Check convergence: when cross-modal similarity is high
                     sim_cross = torch.nn.functional.cosine_similarity(z_img, z_txt, dim=-1).mean()
                     if sim_cross > self.config['CLIP_convergence_threshold']:
                         logger.info(f"Confidence-based cross-modal convergence: sim={sim_cross:.4f}, "
                                   f"confidence={global_confidence:.4f}")
                     
-                    # Store for logging (use index 7 to avoid overwriting existing losses)
-                    if len(losses) > 7:
-                        losses[7] = clip_confidence_loss.item()
+                    losses[6] = clip_confidence_loss.item()
 
                 total_loss += rec_loss
 
