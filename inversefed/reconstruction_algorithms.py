@@ -247,7 +247,7 @@ class GradientReconstructor():
         self.images = None
         self.text_embeds = None # Dummy text embedding reconstruction
 
-        if self.config['CLIP_loss'] > 0 or self.config['CLIP_fused_loss'] > 0:
+        if self.config['CLIP_loss'] > 0 or self.config['CLIP_fused_loss'] > 0 or self.config['CLIP_confidence_loss'] > 0:
             self.CLIP_model, self.CLIP_processor = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device), AutoProcessor.from_pretrained("openai/clip-vit-base-patch32")
             self.CLIP_model = self.CLIP_model.eval()
             # self.CLIP_processor = self.CLIP_processor.eval()
