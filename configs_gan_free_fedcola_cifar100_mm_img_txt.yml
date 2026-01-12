@@ -21,7 +21,12 @@ image_norm: 0    #the coefficient of norm regularizer for Yin et al.
 group_lazy: 0   #choose if we use group lazy regularization for Yin et al.
 patch_prior: 0.00001   #the coefficient of patch prior regularizer
 CLIP_loss: 0.01    #the coefficient of CLIP loss regularizer
-
+CLIP_fused_loss : -1   #the coefficient of fused CLIP loss regularizer
+CLIP_confidence_loss : -1   #the coefficient of confidence-aware cross-modal regularizer
+CLIP_confidence_schedule : False  # enable dynamic lambda scheduling based on confidence
+CLIP_confidence_alpha : 2.0  # trust hyperparameter for exponential decay (higher = faster transition to gradient-based)
+CLIP_confidence_temp : 1.0  # temperature for softmax normalization of confidence weights
+CLIP_convergence_threshold : 0.5  # the convergence threshold for CLIP loss
 bn_stat: 0       #choose if we use bn statistic to regularizer 
 
 max_iterations: 10    #Maximum number of iterations for reconstruction.

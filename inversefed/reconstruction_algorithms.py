@@ -96,6 +96,10 @@ DEFAULT_CONFIG = dict(signed=False,
                       patch_prior=0,
                       CLIP_loss=0,
                       CLIP_fused_loss=-1,
+                      CLIP_confidence_loss=-1,  # Confidence-aware cross-modal regularization
+                      CLIP_confidence_schedule=False,  # Enable dynamic lambda scheduling based on confidence
+                      CLIP_confidence_alpha=2.0,  # Trust hyperparameter for exponential decay
+                      CLIP_confidence_temp=1.0,  # Temperature for softmax normalization of weights
                       CLIP_convergence_threshold=0.5,
                       patch_size=16,
                       #LR pace for training
@@ -196,9 +200,14 @@ class GradientReconstructor():
         self.mean_std = mean_std
         self.num_images = num_images    
 
-        # Add quality tracking
+        # Add quality tracking (L2-based)
         self.quality_img = None
         self.quality_txt = None
+        
+        # Add confidence tracking (cosine similarity-based)
+        self.confidence_img = None
+        self.confidence_txt = None
+        self.lambda_cross_initial = config.get('CLIP_confidence_loss', -1)  # Store initial lambda for scheduling
 
         if self.config['model'] == 'FedCola_IMG':
             self.modality = 'img'
@@ -1452,13 +1461,19 @@ class GradientReconstructor():
                 # Output would be like: "Parameter torch.Size([30522, 384]) is unused in this forward pass."
                 gradient = [g if g is not None else torch.zeros_like(p) for g, p in zip(gradient, self.model.parameters())]
 
-                # Compute quality for each modality
+                # Compute quality and confidence for each modality
                 img_indices = select_indices_fedcola(self.model, select=["img_embedding", "img_blocks"])
                 txt_indices = select_indices_fedcola(self.model, select=["txt_embedding", "txt_blocks"])
 
+                # Compute L2-based quality for CLIP_fused_loss
                 if self.config['CLIP_fused_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
                     self.quality_img = self.compute_quality(gradient, input_gradient[i], img_indices)
                     self.quality_txt = self.compute_quality(gradient, input_gradient[i], txt_indices)
+                
+                # Compute cosine similarity-based confidence for CLIP_confidence_loss
+                if self.config['CLIP_confidence_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
+                    self.confidence_img = self.compute_confidence(gradient, input_gradient[i], img_indices)
+                    self.confidence_txt = self.compute_confidence(gradient, input_gradient[i], txt_indices)
 
                 #apply defense
                 if self.config['defense_method'] is not None:
@@ -1569,6 +1584,75 @@ class GradientReconstructor():
                     # Store for logging
                     losses[6] = clip_fused_loss.item()
 
+                # Add confidence-aware cross-modal regularization (Intrinsic-Extrinsic synergy)
+                if self.config['CLIP_confidence_loss'] > 0 and self.config['model'] == 'FedCola_IMG_TXT':
+                    dm, ds = self.mean_std
+                    x_trial_clamp = torch.clamp(x_trial * ds + dm, 0, 1)
+                    
+                    if self.config['init_text'] != 'ground_truth':
+                        recon_sentence, tokens = de_embed_text(batch_label[i], 
+                                                               bert_embedding=data_holder.get('bert_embedding'), 
+                                                               tokenizer=data_holder.get('bert_tokenizer'))
+                    else:
+                        recon_sentence = get_text_from_tokens(batch_label[i], 
+                                                             tokenizer=data_holder.get('bert_tokenizer'))
+                    
+                    # Get CLIP embeddings (Eq. 4)
+                    z_img, z_txt = self.compute_clip_embeddings(x_trial_clamp.detach(), recon_sentence)
+                    
+                    # Compute global confidence (average of modality confidences)
+                    global_confidence = (self.confidence_img + self.confidence_txt) / 2.0
+                    
+                    # Compute softmax-normalized weights using confidence with temperature
+                    tau = self.config.get('CLIP_confidence_temp', 1.0)
+                    exp_img = torch.exp(self.confidence_img / tau)
+                    exp_txt = torch.exp(self.confidence_txt / tau)
+                    exp_sum = exp_img + exp_txt
+                    
+                    if exp_sum > 1e-10:
+                        w_img = exp_img / exp_sum
+                        w_txt = exp_txt / exp_sum
+                    else:
+                        w_img = w_txt = torch.tensor(0.5, device=self.device)
+                    
+                    # Compute fused embedding (Eq. 5) with confidence-based weights
+                    z_fused = self.compute_fused_embedding(z_img, z_txt, w_img, w_txt)
+                    
+                    # Dynamic lambda scheduling: λ_cross(t) = λ_cross(0) * exp(-α * C_global(t))
+                    if self.config.get('CLIP_confidence_schedule', False):
+                        alpha = self.config.get('CLIP_confidence_alpha', 2.0)
+                        lambda_cross = self.lambda_cross_initial * torch.exp(-alpha * global_confidence)
+                    else:
+                        # Static weight if scheduling is disabled
+                        lambda_cross = self.config['CLIP_confidence_loss']
+                    
+                    # Compute confidence-aware cross-modal regularization (Eq. 6)
+                    # Using cosine distance to penalize misalignment
+                    clip_confidence_loss_img = 1 - torch.nn.functional.cosine_similarity(
+                        z_img, z_fused, dim=-1).mean()
+                    clip_confidence_loss_txt = 1 - torch.nn.functional.cosine_similarity(
+                        z_txt, z_fused, dim=-1).mean()
+                    
+                    # Apply to current modality based on indices
+                    clip_confidence_loss = clip_confidence_loss_img if 'img' in indices else clip_confidence_loss_txt
+                    
+                    rec_loss += lambda_cross * clip_confidence_loss
+                    
+                    # Log confidence metrics
+                    if iteration % 100 == 0:  # Log every 100 iterations
+                        logger.info(f"Confidence - Img: {self.confidence_img:.4f}, Txt: {self.confidence_txt:.4f}, "
+                                  f"Global: {global_confidence:.4f}, Lambda: {lambda_cross:.4f}")
+                    
+                    # Check convergence: when cross-modal similarity is high
+                    sim_cross = torch.nn.functional.cosine_similarity(z_img, z_txt, dim=-1).mean()
+                    if sim_cross > self.config['CLIP_convergence_threshold']:
+                        logger.info(f"Confidence-based cross-modal convergence: sim={sim_cross:.4f}, "
+                                  f"confidence={global_confidence:.4f}")
+                    
+                    # Store for logging (use index 7 to avoid overwriting existing losses)
+                    if len(losses) > 7:
+                        losses[7] = clip_confidence_loss.item()
+
                 total_loss += rec_loss
 
             if self.config['optim'] != "CMA-ES":
@@ -1662,7 +1746,7 @@ class GradientReconstructor():
 
     def compute_quality(self, trial_gradient, input_gradient, indices):
         """
-        Compute quality parameter Q(x_m)
+        Compute quality parameter Q(x_m) using L2-based metric
         Q(x_m) = 1 - ||∇W' - ∇W|| / ||∇W||
         """
         # Initialize as tensors with proper device
@@ -1683,6 +1767,43 @@ class GradientReconstructor():
         
         quality = 1.0 - (gradient_diff_norm / input_gradient_norm)
         return torch.clamp(quality, 0.0, 1.0)  # Ensure Q in [0,1]
+
+    def compute_confidence(self, trial_gradient, input_gradient, indices):
+        """
+        Compute modality confidence score C_m using cosine similarity of gradients.
+        C_m = max(0, <∇W', ∇W> / (||∇W'|| * ||∇W||))
+        
+        This is mathematically sound as it's naturally bounded in [0,1] and represents
+        how well the dummy gradient's direction aligns with the true gradient.
+        """
+        device = input_gradient[0].device
+        
+        # Compute dot product and norms
+        dot_product = torch.tensor(0.0, device=device)
+        trial_norm = torch.tensor(0.0, device=device)
+        input_norm = torch.tensor(0.0, device=device)
+        
+        for i in indices:
+            # Flatten gradients for dot product
+            trial_flat = trial_gradient[i].flatten()
+            input_flat = input_gradient[i].flatten()
+            
+            dot_product += torch.dot(trial_flat, input_flat)
+            trial_norm += trial_flat.pow(2).sum()
+            input_norm += input_flat.pow(2).sum()
+        
+        trial_norm = trial_norm.sqrt()
+        input_norm = input_norm.sqrt()
+        
+        # Avoid division by zero
+        if trial_norm < 1e-10 or input_norm < 1e-10:
+            return torch.tensor(0.0, device=device)
+        
+        # Cosine similarity
+        confidence = dot_product / (trial_norm * input_norm)
+        
+        # Ensure confidence is in [0, 1]
+        return torch.clamp(confidence, 0.0, 1.0)
 
 
     def compute_fused_embedding(self, img_embed, txt_embed, w_img, w_txt):
