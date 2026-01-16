@@ -1714,6 +1714,50 @@ class GradientReconstructor():
         labels = torch.sort(last_weight_min.detach().reshape((-1,)).requires_grad_(False))[0]     # Use sort to adjust the order of labels as the same to grouth truth 
         return labels
 
+    def extract_text_between_tags(self, text):
+        """
+        Extract text between [CLS] and [SEP] tags.
+        If multiple [SEP] tags exist, take the longest sequence.
+        Drop everything after the final [SEP] tag.
+        
+        Example: "[CLS] a sea in the image . [SEP]ators rockies" -> "a sea in the image"
+        """
+        if not isinstance(text, str):
+            return text
+        
+        # Check if both [CLS] and [SEP] tags exist
+        if '[CLS]' not in text or '[SEP]' not in text:
+            return text
+        
+        # Find all [SEP] positions
+        sep_positions = []
+        start_idx = 0
+        while True:
+            idx = text.find('[SEP]', start_idx)
+            if idx == -1:
+                break
+            sep_positions.append(idx)
+            start_idx = idx + 1
+        
+        if not sep_positions:
+            return text
+        
+        # Find [CLS] position
+        cls_idx = text.find('[CLS]')
+        if cls_idx == -1:
+            return text
+        
+        # Extract text segments between [CLS] and each [SEP]
+        segments = []
+        for sep_idx in sep_positions:
+            segment_start = cls_idx + len('[CLS]')
+            segment = text[segment_start:sep_idx].strip()
+            segments.append(segment)
+        
+        # Return the longest segment
+        longest_segment = max(segments, key=len) if segments else text
+        return longest_segment
+
     def clip_similarity(self, image, text, device='cuda'):
         # Convert tensor to proper format for CLIP processor  
         if isinstance(image, torch.Tensor):
@@ -1729,6 +1773,9 @@ class GradientReconstructor():
             # Ensure values are in [0, 255] range for PIL
             image_np = (image_np * 255).astype(np.uint8)
             image = image_np
+
+        # Extract text between [CLS] and [SEP] tags
+        text = self.extract_text_between_tags(text)
 
         inputs = self.CLIP_processor(text=text, images=image, return_tensors="pt", truncation=True, padding=True).to(device)
         outputs = self.CLIP_model(**inputs)
@@ -1821,6 +1868,9 @@ class GradientReconstructor():
                 image_np = image_np.transpose(1, 2, 0)
             image_np = (image_np * 255).astype(np.uint8)
             image = image_np
+        
+        # Extract text between [CLS] and [SEP] tags
+        text = self.extract_text_between_tags(text)
         
         # Get embeddings
         inputs = self.CLIP_processor(text=text, images=image, return_tensors="pt", 
