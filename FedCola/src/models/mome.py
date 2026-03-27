@@ -1255,6 +1255,40 @@ def mome_small_patch16(pretrained, args, **kwargs):
         model.pretrain_vit(['vit_small_patch16_224', None])
     return model 
 
+
+@register_model
+def mome_small_patch16_depth2(pretrained, args, **kwargs):
+    '''
+    We unify the img and text encoders into one model 
+    shared_param: Shared parameters between same modality in different type of client 
+                  (i.e., img encoder in img client and img encoder in img-txt client) 
+    share_scope: Shared scope during aggregation
+                 dataset: share parameters only to encoders with the same dataset
+                 modality: share parameters only to encoders with the same modality
+                 all: share parameters among all encoders
+    colearn_param: Shared parameters between img and txt encoders
+    '''
+
+    model = ModalityAgnosticTransformer(img_size=224,
+                patch_size=16,
+                embed_dim=384,
+                depth=2,
+                num_heads=6,
+                vocab_size=args.vocab_size, 
+                max_text_len=args.seq_len,
+                drop_path_rate=args.dropout,
+                shared_param=args.shared_param,
+                share_scope=args.share_scope,
+                colearn_param=args.colearn_param,
+                freeze_bert_embeddings=args.freeze_bert_embeddings,
+                freeze_patch_embeddings=args.freeze_patch_embeddings,
+                **kwargs
+                )
+    model.sync_shared_weights()
+    if pretrained:
+        model.pretrain_vit(['vit_small_patch16_224', None])
+    return model
+
 @register_model
 def mome_tiny_patch16(pretrained, args, **kwargs):
 

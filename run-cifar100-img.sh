@@ -28,7 +28,7 @@ python run_mm_rec.py \
     --test_size -1 \
     --split_type diri \
     --cncntrtn $cncntrtn \
-    --model_name mome_small_patch16 \
+    --model_name mome_small_patch16_depth2 \
     --resize 224 \
     --imnorm \
     --algorithm fedavg \
