@@ -23,8 +23,10 @@
   CLIP_loss : 0.01    #the coefficient of CLIP loss regularizer
   CLIP_fused_loss : -1   #the coefficient of fused CLIP loss regularizer
   CLIP_confidence_loss : -1   #the coefficient of confidence-aware cross-modal regularizer
-  CLIP_confidence_schedule : False  # enable dynamic lambda scheduling based on confidence
+  CLIP_confidence_schedule : False  # enable dynamic lambda scheduling: False, 'global_avg', 'global_min', 'modality_specific'
   CLIP_confidence_alpha : 2.0  # trust hyperparameter for exponential decay (higher = faster transition to gradient-based)
+  CLIP_conf_shed_decay : exponential  # decay type for confidence scheduling: 'exponential' or 'bell'
+  CLIP_confidence_bell_k : 4.0  # scaling factor k for bell curve decay
   CLIP_confidence_temp : 1.0  # temperature for softmax normalization of confidence weights
   CLIP_convergence_threshold : 0.5  # the convergence threshold for CLIP loss
 

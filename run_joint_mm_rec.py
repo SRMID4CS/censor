@@ -366,6 +366,8 @@ if __name__ == "__main__":
                     CLIP_confidence_loss=config['CLIP_confidence_loss'],
                     CLIP_confidence_schedule=config['CLIP_confidence_schedule'],
                     CLIP_confidence_alpha=config['CLIP_confidence_alpha'],
+                    CLIP_conf_shed_decay=config.get('CLIP_conf_shed_decay', 'exponential'),
+                    CLIP_confidence_bell_k=config.get('CLIP_confidence_bell_k', 4.0),
                     CLIP_confidence_temp=config['CLIP_confidence_temp'],
                     image_norm=config['image_norm'],
                     z_norm=args.z_norm,

@@ -97,8 +97,10 @@ DEFAULT_CONFIG = dict(signed=False,
                       CLIP_loss=0,
                       CLIP_fused_loss=-1,
                       CLIP_confidence_loss=-1,  # Confidence-aware cross-modal regularization
-                      CLIP_confidence_schedule=False,  # Enable dynamic lambda scheduling based on confidence
+                      CLIP_confidence_schedule=False,  # Enable dynamic lambda scheduling: False, 'global_avg', 'global_min', 'modality_specific'
                       CLIP_confidence_alpha=2.0,  # Trust hyperparameter for exponential decay
+                      CLIP_conf_shed_decay='exponential',  # Decay type for confidence scheduling: 'exponential' or 'bell'
+                      CLIP_confidence_bell_k=4.0,  # Scaling factor k for bell curve decay: λ_0 * k * C * (1 - C)
                       CLIP_confidence_temp=1.0,  # Temperature for softmax normalization of weights
                       CLIP_convergence_threshold=0.5,
                       patch_size=16,
@@ -1618,10 +1620,29 @@ class GradientReconstructor():
                     # Compute fused embedding (Eq. 5) with confidence-based weights
                     z_fused = self.compute_fused_embedding(z_img, z_txt, w_img, w_txt)
                     
-                    # Dynamic lambda scheduling: λ_cross(t) = λ_cross(0) * exp(-α * C_global(t))
-                    if self.config.get('CLIP_confidence_schedule', False):
+                    # Dynamic lambda scheduling based on confidence
+                    schedule_mode = self.config.get('CLIP_confidence_schedule', False)
+                    if schedule_mode:
                         alpha = self.config.get('CLIP_confidence_alpha', 2.0)
-                        lambda_cross = self.lambda_cross_initial * torch.exp(-alpha * global_confidence)
+                        decay_type = self.config.get('CLIP_conf_shed_decay', 'exponential')
+
+                        # Compute confidence value based on schedule mode
+                        if schedule_mode == 'global_avg':
+                            conf = (self.confidence_img + self.confidence_txt) / 2.0
+                        elif schedule_mode == 'global_min':
+                            conf = torch.min(self.confidence_img, self.confidence_txt)
+                        elif schedule_mode == 'modality_specific':
+                            conf = self.confidence_img if 'img' in indices else self.confidence_txt
+                        else:
+                            # Fallback to global average for unknown modes
+                            conf = (self.confidence_img + self.confidence_txt) / 2.0
+
+                        # Compute lambda_cross based on decay type
+                        if decay_type == 'bell':
+                            bell_k = self.config.get('CLIP_confidence_bell_k', 4.0)
+                            lambda_cross = self.lambda_cross_initial * bell_k * conf * (1 - conf)
+                        else:  # 'exponential' (default)
+                            lambda_cross = self.lambda_cross_initial * torch.exp(-alpha * conf)
                     else:
                         # Static weight if scheduling is disabled
                         lambda_cross = self.config['CLIP_confidence_loss']
